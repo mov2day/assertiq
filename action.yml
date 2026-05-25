@@ -34,4 +34,4 @@ outputs:
     description: Full AssertIQ JSON report.
 runs:
   using: node24
-  main: dist/action.js
+  main: dist/action.cjs

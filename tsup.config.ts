@@ -1,20 +1,38 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
-  entry: {
-    action: "src/action.ts",
-    cli: "src/cli.ts",
-    index: "src/index.ts"
-  },
-  format: ["esm"],
+const shared = {
   platform: "node",
   target: "node22",
   outDir: "dist",
-  clean: true,
   bundle: true,
   splitting: false,
-  sourcemap: true,
-  dts: {
-    entry: "src/index.ts"
+  sourcemap: true
+};
+
+export default defineConfig([
+  {
+    ...shared,
+    entry: {
+      action: "src/action.ts"
+    },
+    format: ["cjs"],
+    clean: true,
+    noExternal: ["@actions/github", "@babel/parser", "@babel/traverse", "@babel/types", "fast-glob", "picocolors"],
+    outExtension() {
+      return {
+        js: ".cjs"
+      };
+    }
+  },
+  {
+    ...shared,
+    entry: {
+      cli: "src/cli.ts",
+      index: "src/index.ts"
+    },
+    format: ["esm"],
+    dts: {
+      entry: "src/index.ts"
+    }
   }
-});
+]);

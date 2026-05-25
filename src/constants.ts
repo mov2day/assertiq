@@ -1,6 +1,7 @@
+import packageJson from "../package.json";
 import type { DimensionDefinition, DimensionId } from "./types.js";
 
-export const TOOL_VERSION = "0.1.0";
+export const TOOL_VERSION = packageJson.version;
 
 export const DIMENSIONS: DimensionDefinition[] = [
   { id: "assertion-quality", name: "Assertion Quality", weight: 0.3 },
