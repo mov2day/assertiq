@@ -4,7 +4,7 @@ import path3 from "path";
 // package.json
 var package_default = {
   name: "@mov2day/assertiq",
-  version: "0.1.2",
+  version: "0.1.3",
   description: "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
   type: "module",
   bin: {
