@@ -3,5 +3,5 @@ node_modules/
 coverage/
 .vitest/
 *.log
-assertiq-report.html
-assertiq-badge.svg
+docs/assertiq-report.html
+docs/assertiq-badge.svg
