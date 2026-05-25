@@ -39,3 +39,8 @@ export function setActionFailed(message: string): void {
 export function escapeActionCommand(value: string): string {
   return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 }
+
+export function shouldWriteHistoryForAction(trackHistory: boolean, eventName: string, ref: string): boolean {
+  if (!trackHistory) return false;
+  return eventName === "push" && ref === "refs/heads/main";
+}

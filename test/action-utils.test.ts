@@ -2,7 +2,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { diffIssues, escapeActionCommand, setActionOutput, splitActionInput } from "../src/action-utils.js";
+import {
+  diffIssues,
+  escapeActionCommand,
+  setActionOutput,
+  shouldWriteHistoryForAction,
+  splitActionInput
+} from "../src/action-utils.js";
 import { renderMarkdownComment } from "../src/reporters/markdown.js";
 import type { AssertIQReport, Issue } from "../src/types.js";
 
@@ -42,6 +48,13 @@ describe("action utilities", () => {
     const body = renderMarkdownComment(report([newIssue]), [newIssue]);
     expect(body).toContain("<!-- assertiq-comment -->");
     expect(body).toContain("New risks introduced:** 1");
+  });
+
+  it("enables history writes only for push-main with opt-in", () => {
+    expect(shouldWriteHistoryForAction(false, "push", "refs/heads/main")).toBe(false);
+    expect(shouldWriteHistoryForAction(true, "pull_request", "refs/heads/main")).toBe(false);
+    expect(shouldWriteHistoryForAction(true, "push", "refs/heads/feature")).toBe(false);
+    expect(shouldWriteHistoryForAction(true, "push", "refs/heads/main")).toBe(true);
   });
 });
 

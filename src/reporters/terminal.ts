@@ -8,7 +8,7 @@ export function renderTerminalReport(report: AssertIQReport): string {
     "",
     ...report.dimensions.map(renderDimension),
     "",
-    `OVERALL ${bar(report.summary.score)} ${colorGrade(report.summary.grade)} ${report.summary.score}`,
+    `OVERALL ${bar(report.summary.score)} ${colorGrade(report.summary.grade)} ${report.summary.score}${renderOverallDelta(report)}`,
   ];
 
   if (report.issues.length > 0) {
@@ -44,6 +44,14 @@ function colorGrade(grade: string): string {
   if (base === "A" || base === "B") return pc.green(grade);
   if (base === "C") return pc.yellow(grade);
   return pc.red(grade);
+}
+
+function renderOverallDelta(report: AssertIQReport): string {
+  const delta = report.scoreDelta?.overall;
+  if (delta === undefined) return "";
+  if (delta > 0) return ` ${pc.green(`↑ +${delta}`)}`;
+  if (delta < 0) return ` ${pc.red(`↓ ${delta}`)}`;
+  return ` ${pc.gray("→ 0")}`;
 }
 
 function topIssues(issues: Issue[]): Issue[] {

@@ -1147,14 +1147,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path6 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path7 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path6 && path6[0] !== "/") {
-          path6 = `/${path6}`;
+        if (path7 && path7[0] !== "/") {
+          path7 = `/${path7}`;
         }
-        return new URL(`${origin}${path6}`);
+        return new URL(`${origin}${path7}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -1605,39 +1605,39 @@ var require_diagnostics = __commonJS({
       });
       diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin }
+          request: { method, path: path7, origin }
         } = evt;
-        debuglog("sending request to %s %s/%s", method, origin, path6);
+        debuglog("sending request to %s %s/%s", method, origin, path7);
       });
       diagnosticsChannel.channel("undici:request:headers").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin },
+          request: { method, path: path7, origin },
           response: { statusCode }
         } = evt;
         debuglog(
           "received response to %s %s/%s - HTTP %d",
           method,
           origin,
-          path6,
+          path7,
           statusCode
         );
       });
       diagnosticsChannel.channel("undici:request:trailers").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin }
+          request: { method, path: path7, origin }
         } = evt;
-        debuglog("trailers received from %s %s/%s", method, origin, path6);
+        debuglog("trailers received from %s %s/%s", method, origin, path7);
       });
       diagnosticsChannel.channel("undici:request:error").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin },
+          request: { method, path: path7, origin },
           error
         } = evt;
         debuglog(
           "request to %s %s/%s errored - %s",
           method,
           origin,
-          path6,
+          path7,
           error.message
         );
       });
@@ -1686,9 +1686,9 @@ var require_diagnostics = __commonJS({
         });
         diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path7, origin }
           } = evt;
-          debuglog("sending request to %s %s/%s", method, origin, path6);
+          debuglog("sending request to %s %s/%s", method, origin, path7);
         });
       }
       diagnosticsChannel.channel("undici:websocket:open").subscribe((evt) => {
@@ -1751,7 +1751,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request = class {
       constructor(origin, {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -1766,11 +1766,11 @@ var require_request = __commonJS({
         expectContinue,
         servername
       }, handler2) {
-        if (typeof path6 !== "string") {
+        if (typeof path7 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path6[0] !== "/" && !(path6.startsWith("http://") || path6.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path7[0] !== "/" && !(path7.startsWith("http://") || path7.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path6)) {
+        } else if (invalidPathRegex.test(path7)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -1836,7 +1836,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? buildURL(path6, query) : path6;
+        this.path = query ? buildURL(path7, query) : path7;
         this.origin = origin;
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
         this.blocking = blocking == null ? false : blocking;
@@ -6362,7 +6362,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request2) {
-      const { method, path: path6, host, upgrade, blocking, reset } = request2;
+      const { method, path: path7, host, upgrade, blocking, reset } = request2;
       let { body, headers, contentLength } = request2;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util.isFormDataLike(body)) {
@@ -6428,7 +6428,7 @@ var require_client_h1 = __commonJS({
       if (blocking) {
         socket[kBlocking] = true;
       }
-      let header = `${method} ${path6} HTTP/1.1\r
+      let header = `${method} ${path7} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -6954,7 +6954,7 @@ var require_client_h2 = __commonJS({
     }
     function writeH2(client, request2) {
       const session = client[kHTTP2Session];
-      const { method, path: path6, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
+      const { method, path: path7, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
       let { body } = request2;
       if (upgrade) {
         util.errorRequest(client, request2, new Error("Upgrade not supported for H2"));
@@ -7021,7 +7021,7 @@ var require_client_h2 = __commonJS({
         });
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path6;
+      headers[HTTP2_HEADER_PATH] = path7;
       headers[HTTP2_HEADER_SCHEME] = "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -7374,9 +7374,9 @@ var require_redirect_handler = __commonJS({
           return this.handler.onHeaders(statusCode, headers, resume, statusText);
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path6 = search ? `${pathname}${search}` : pathname;
+        const path7 = search ? `${pathname}${search}` : pathname;
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path6;
+        this.opts.path = path7;
         this.opts.origin = origin;
         this.opts.maxRedirections = 0;
         this.opts.query = null;
@@ -8612,10 +8612,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path6 = "/",
+          path: path7 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path6;
+        opts.path = origin + path7;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL2(origin);
           headers.host = host;
@@ -10538,20 +10538,20 @@ var require_mock_utils = __commonJS({
       }
       return true;
     }
-    function safeUrl(path6) {
-      if (typeof path6 !== "string") {
-        return path6;
+    function safeUrl(path7) {
+      if (typeof path7 !== "string") {
+        return path7;
       }
-      const pathSegments = path6.split("?");
+      const pathSegments = path7.split("?");
       if (pathSegments.length !== 2) {
-        return path6;
+        return path7;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path6, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path6);
+    function matchKey(mockDispatch2, { path: path7, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path7);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -10573,7 +10573,7 @@ var require_mock_utils = __commonJS({
     function getMockDispatch(mockDispatches, key) {
       const basePath = key.query ? buildURL(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path6 }) => matchValue(safeUrl(path6), resolvedPath));
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path7 }) => matchValue(safeUrl(path7), resolvedPath));
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
       }
@@ -10611,9 +10611,9 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildKey(opts) {
-      const { path: path6, method, body, headers, query } = opts;
+      const { path: path7, method, body, headers, query } = opts;
       return {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -11076,10 +11076,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path6, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path7, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path6,
+            Path: path7,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -15960,9 +15960,9 @@ var require_util6 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path6) {
-      for (let i = 0; i < path6.length; ++i) {
-        const code = path6.charCodeAt(i);
+    function validateCookiePath(path7) {
+      for (let i = 0; i < path7.length; ++i) {
+        const code = path7.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code === 127 || // DEL
         code === 59) {
@@ -18639,11 +18639,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path6 = opts.path;
+          let path7 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path6 = `/${path6}`;
+            path7 = `/${path7}`;
           }
-          url = new URL(util.parseOrigin(url).origin + path6);
+          url = new URL(util.parseOrigin(url).origin + path7);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -20044,11 +20044,11 @@ var require_lib2 = __commonJS({
     }
     var estree = (superClass) => class ESTreeParserMixin extends superClass {
       parse() {
-        const file = toESTreeLocation(super.parse());
+        const file2 = toESTreeLocation(super.parse());
         if (this.optionFlags & 256) {
-          file.tokens = file.tokens.map(toESTreeLocation);
+          file2.tokens = file2.tokens.map(toESTreeLocation);
         }
-        return file;
+        return file2;
       }
       parseRegExpLiteral({
         pattern,
@@ -23234,8 +23234,8 @@ var require_lib2 = __commonJS({
         }
         super.readToken_pipe_amp(code2);
       }
-      parseTopLevel(file, program) {
-        const fileNode = super.parseTopLevel(file, program);
+      parseTopLevel(file2, program2) {
+        const fileNode = super.parseTopLevel(file2, program2);
         if (this.state.hasFlowComment) {
           this.raise(FlowErrors.UnterminatedFlowComment, this.state.curPosition());
         }
@@ -27033,9 +27033,9 @@ var require_lib2 = __commonJS({
         var _expression$extra;
         const type = expression.type;
         if (this.isObjectMethod(expression)) return;
-        const isOptionalMemberExpression = this.isOptionalMemberExpression(expression);
-        if (isOptionalMemberExpression || type === "MemberExpression") {
-          if (isOptionalMemberExpression) {
+        const isOptionalMemberExpression2 = this.isOptionalMemberExpression(expression);
+        if (isOptionalMemberExpression2 || type === "MemberExpression") {
+          if (isOptionalMemberExpression2) {
             this.expectPlugin("optionalChainingAssign", expression.loc.start);
             if (ancestor.type !== "AssignmentExpression") {
               this.raise(Errors.InvalidLhsOptionalChaining, expression, {
@@ -31994,12 +31994,12 @@ var require_lib2 = __commonJS({
         if (!this.match(5)) {
           this.unexpected(null, 5);
         }
-        const program = this.startNodeAt(this.state.endLoc);
+        const program2 = this.startNodeAt(this.state.endLoc);
         this.next();
         const revertScopes = this.initializeScopes(true);
         this.enterInitialScopes();
         try {
-          node.body = this.parseProgram(program, 8, "module");
+          node.body = this.parseProgram(program2, 8, "module");
         } finally {
           revertScopes();
         }
@@ -32140,18 +32140,18 @@ var require_lib2 = __commonJS({
       return tokens;
     }
     var StatementParser = class extends ExpressionParser {
-      parseTopLevel(file, program) {
-        file.program = this.parseProgram(program, 140, this.options.sourceType === "module" ? "module" : "script");
-        file.comments = this.comments;
+      parseTopLevel(file2, program2) {
+        file2.program = this.parseProgram(program2, 140, this.options.sourceType === "module" ? "module" : "script");
+        file2.comments = this.comments;
         if (this.optionFlags & 256) {
-          file.tokens = babel7CompatTokens(this.tokens, this.input, this.startIndex);
+          file2.tokens = babel7CompatTokens(this.tokens, this.input, this.startIndex);
         }
-        return this.finishNode(file, "File");
+        return this.finishNode(file2, "File");
       }
-      parseProgram(program, end, sourceType) {
-        program.sourceType = sourceType;
-        program.interpreter = this.parseInterpreterDirective();
-        this.parseBlockBody(program, true, true, end);
+      parseProgram(program2, end, sourceType) {
+        program2.sourceType = sourceType;
+        program2.interpreter = this.parseInterpreterDirective();
+        this.parseBlockBody(program2, true, true, end);
         if (this.inModule) {
           if (!(this.optionFlags & 64) && this.scope.undefinedExports.size > 0) {
             for (const [localName, at] of Array.from(this.scope.undefinedExports)) {
@@ -32160,13 +32160,13 @@ var require_lib2 = __commonJS({
               });
             }
           }
-          this.addExtra(program, "topLevelAwait", this.state.hasTopLevelAwait);
+          this.addExtra(program2, "topLevelAwait", this.state.hasTopLevelAwait);
         }
         let finishedProgram;
         if (end === 140) {
-          finishedProgram = this.finishNode(program, "Program");
+          finishedProgram = this.finishNode(program2, "Program");
         } else {
-          finishedProgram = this.finishNodeAt(program, "Program", createPositionWithColumnOffset(this.state.startLoc, -1));
+          finishedProgram = this.finishNodeAt(program2, "Program", createPositionWithColumnOffset(this.state.startLoc, -1));
         }
         return finishedProgram;
       }
@@ -34008,11 +34008,11 @@ var require_lib2 = __commonJS({
       }
       parse() {
         this.enterInitialScopes();
-        const file = this.startNode();
-        const program = this.startNode();
+        const file2 = this.startNode();
+        const program2 = this.startNode();
         this.nextToken();
-        file.errors = null;
-        const result = this.parseTopLevel(file, program);
+        file2.errors = null;
+        const result = this.parseTopLevel(file2, program2);
         result.errors = this.state.errors;
         result.comments.length = this.state.commentsLen;
         return result;
@@ -34872,11 +34872,11 @@ var require_generated = __commonJS({
     exports2.isAnyTypeAnnotation = isAnyTypeAnnotation;
     exports2.isArgumentPlaceholder = isArgumentPlaceholder;
     exports2.isArrayExpression = isArrayExpression;
-    exports2.isArrayPattern = isArrayPattern;
+    exports2.isArrayPattern = isArrayPattern2;
     exports2.isArrayTypeAnnotation = isArrayTypeAnnotation;
     exports2.isArrowFunctionExpression = isArrowFunctionExpression2;
     exports2.isAssignmentExpression = isAssignmentExpression;
-    exports2.isAssignmentPattern = isAssignmentPattern;
+    exports2.isAssignmentPattern = isAssignmentPattern2;
     exports2.isAwaitExpression = isAwaitExpression;
     exports2.isBigIntLiteral = isBigIntLiteral;
     exports2.isBinary = isBinary;
@@ -34884,7 +34884,7 @@ var require_generated = __commonJS({
     exports2.isBindExpression = isBindExpression;
     exports2.isBlock = isBlock;
     exports2.isBlockParent = isBlockParent;
-    exports2.isBlockStatement = isBlockStatement;
+    exports2.isBlockStatement = isBlockStatement2;
     exports2.isBooleanLiteral = isBooleanLiteral;
     exports2.isBooleanLiteralTypeAnnotation = isBooleanLiteralTypeAnnotation;
     exports2.isBooleanTypeAnnotation = isBooleanTypeAnnotation;
@@ -34946,7 +34946,7 @@ var require_generated = __commonJS({
     exports2.isExportNamespaceSpecifier = isExportNamespaceSpecifier;
     exports2.isExportSpecifier = isExportSpecifier;
     exports2.isExpression = isExpression;
-    exports2.isExpressionStatement = isExpressionStatement;
+    exports2.isExpressionStatement = isExpressionStatement2;
     exports2.isExpressionWrapper = isExpressionWrapper;
     exports2.isFile = isFile;
     exports2.isFlow = isFlow;
@@ -35026,8 +35026,8 @@ var require_generated = __commonJS({
     exports2.isObjectExpression = isObjectExpression;
     exports2.isObjectMember = isObjectMember;
     exports2.isObjectMethod = isObjectMethod;
-    exports2.isObjectPattern = isObjectPattern;
-    exports2.isObjectProperty = isObjectProperty;
+    exports2.isObjectPattern = isObjectPattern2;
+    exports2.isObjectProperty = isObjectProperty2;
     exports2.isObjectTypeAnnotation = isObjectTypeAnnotation;
     exports2.isObjectTypeCallProperty = isObjectTypeCallProperty;
     exports2.isObjectTypeIndexer = isObjectTypeIndexer;
@@ -35037,7 +35037,7 @@ var require_generated = __commonJS({
     exports2.isOpaqueType = isOpaqueType;
     exports2.isOptionalCallExpression = isOptionalCallExpression;
     exports2.isOptionalIndexedAccessType = isOptionalIndexedAccessType;
-    exports2.isOptionalMemberExpression = isOptionalMemberExpression;
+    exports2.isOptionalMemberExpression = isOptionalMemberExpression2;
     exports2.isParenthesizedExpression = isParenthesizedExpression;
     exports2.isPattern = isPattern;
     exports2.isPatternLike = isPatternLike;
@@ -35054,7 +35054,7 @@ var require_generated = __commonJS({
     exports2.isRecordExpression = isRecordExpression;
     exports2.isRegExpLiteral = isRegExpLiteral;
     exports2.isRegexLiteral = isRegexLiteral;
-    exports2.isRestElement = isRestElement;
+    exports2.isRestElement = isRestElement2;
     exports2.isRestProperty = isRestProperty;
     exports2.isReturnStatement = isReturnStatement;
     exports2.isScopable = isScopable;
@@ -35167,7 +35167,7 @@ var require_generated = __commonJS({
     exports2.isUpdateExpression = isUpdateExpression;
     exports2.isUserWhitespacable = isUserWhitespacable;
     exports2.isV8IntrinsicIdentifier = isV8IntrinsicIdentifier;
-    exports2.isVariableDeclaration = isVariableDeclaration;
+    exports2.isVariableDeclaration = isVariableDeclaration2;
     exports2.isVariableDeclarator = isVariableDeclarator;
     exports2.isVariance = isVariance;
     exports2.isVoidPattern = isVoidPattern;
@@ -35208,7 +35208,7 @@ var require_generated = __commonJS({
       if (node.type !== "DirectiveLiteral") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isBlockStatement(node, opts) {
+    function isBlockStatement2(node, opts) {
       if (!node) return false;
       if (node.type !== "BlockStatement") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35253,7 +35253,7 @@ var require_generated = __commonJS({
       if (node.type !== "EmptyStatement") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isExpressionStatement(node, opts) {
+    function isExpressionStatement2(node, opts) {
       if (!node) return false;
       if (node.type !== "ExpressionStatement") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35353,12 +35353,12 @@ var require_generated = __commonJS({
       if (node.type !== "ObjectMethod") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isObjectProperty(node, opts) {
+    function isObjectProperty2(node, opts) {
       if (!node) return false;
       if (node.type !== "ObjectProperty") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isRestElement(node, opts) {
+    function isRestElement2(node, opts) {
       if (!node) return false;
       if (node.type !== "RestElement") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35413,7 +35413,7 @@ var require_generated = __commonJS({
       if (node.type !== "UpdateExpression") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isVariableDeclaration(node, opts) {
+    function isVariableDeclaration2(node, opts) {
       if (!node) return false;
       if (node.type !== "VariableDeclaration") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35433,12 +35433,12 @@ var require_generated = __commonJS({
       if (node.type !== "WithStatement") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isAssignmentPattern(node, opts) {
+    function isAssignmentPattern2(node, opts) {
       if (!node) return false;
       if (node.type !== "AssignmentPattern") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isArrayPattern(node, opts) {
+    function isArrayPattern2(node, opts) {
       if (!node) return false;
       if (node.type !== "ArrayPattern") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35523,7 +35523,7 @@ var require_generated = __commonJS({
       if (node.type !== "ClassMethod") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isObjectPattern(node, opts) {
+    function isObjectPattern2(node, opts) {
       if (!node) return false;
       if (node.type !== "ObjectPattern") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -35578,7 +35578,7 @@ var require_generated = __commonJS({
       if (node.type !== "ExportNamespaceSpecifier") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
     }
-    function isOptionalMemberExpression(node, opts) {
+    function isOptionalMemberExpression2(node, opts) {
       if (!node) return false;
       if (node.type !== "OptionalMemberExpression") return false;
       return opts == null || (0, _shallowEqual.default)(node, opts);
@@ -41999,7 +41999,7 @@ var require_lowercase = __commonJS({
     exports2.exportNamespaceSpecifier = exportNamespaceSpecifier;
     exports2.exportSpecifier = exportSpecifier;
     exports2.expressionStatement = expressionStatement;
-    exports2.file = file;
+    exports2.file = file2;
     exports2.forInStatement = forInStatement;
     exports2.forOfStatement = forOfStatement;
     exports2.forStatement = forStatement;
@@ -42074,7 +42074,7 @@ var require_lowercase = __commonJS({
     exports2.pipelineTopicExpression = pipelineTopicExpression;
     exports2.placeholder = placeholder;
     exports2.privateName = privateName;
-    exports2.program = program;
+    exports2.program = program2;
     exports2.qualifiedTypeIdentifier = qualifiedTypeIdentifier;
     exports2.recordExpression = recordExpression;
     exports2.regExpLiteral = regExpLiteral;
@@ -42366,15 +42366,15 @@ var require_lowercase = __commonJS({
       validate(defs.expression, node, "expression", expression, 1);
       return node;
     }
-    function file(program2, comments = null, tokens = null) {
+    function file2(program3, comments = null, tokens = null) {
       const node = {
         type: "File",
-        program: program2,
+        program: program3,
         comments,
         tokens
       };
       const defs = NODE_FIELDS.File;
-      validate(defs.program, node, "program", program2, 1);
+      validate(defs.program, node, "program", program3, 1);
       validate(defs.comments, node, "comments", comments, 1);
       validate(defs.tokens, node, "tokens", tokens);
       return node;
@@ -42556,7 +42556,7 @@ var require_lowercase = __commonJS({
       validate(defs.arguments, node, "arguments", _arguments, 1);
       return node;
     }
-    function program(body, directives = [], sourceType = "script", interpreter = null) {
+    function program2(body, directives = [], sourceType = "script", interpreter = null) {
       const node = {
         type: "Program",
         body,
@@ -48901,7 +48901,7 @@ var require_virtual_types_validator = __commonJS({
       isScope: nodeIsScope,
       isStatement: nodeIsStatement,
       isVar: nodeIsVar,
-      isVariableDeclaration,
+      isVariableDeclaration: isVariableDeclaration2,
       react,
       isForOfStatement
     } = _t;
@@ -48943,7 +48943,7 @@ var require_virtual_types_validator = __commonJS({
         parent
       } = this;
       if (nodeIsStatement(node)) {
-        if (isVariableDeclaration(node)) {
+        if (isVariableDeclaration2(node)) {
           if (isForXStatement(parent, {
             left: node
           })) return false;
@@ -49144,11 +49144,11 @@ var require_visitors = __commonJS({
       }
       visitor._verified = true;
     }
-    function validateVisitorMethods(path6, val) {
+    function validateVisitorMethods(path7, val) {
       const fns = [].concat(val);
       for (const fn of fns) {
         if (typeof fn !== "function") {
-          throw new TypeError(`Non-function found defined in ${path6} with type ${typeof fn}`);
+          throw new TypeError(`Non-function found defined in ${path7} with type ${typeof fn}`);
         }
       }
     }
@@ -49191,8 +49191,8 @@ var require_visitors = __commonJS({
         fns = fns.map(function(fn) {
           let newFn = fn;
           if (state) {
-            newFn = function(path6) {
-              fn.call(state, path6, state);
+            newFn = function(path7) {
+              fn.call(state, path7, state);
             };
           }
           if (wrapper) {
@@ -49225,8 +49225,8 @@ var require_visitors = __commonJS({
     function wrapCheck(nodeType, fn) {
       const fnKey = `is${nodeType}`;
       const validator = virtualTypesValidators[fnKey];
-      const newFn = function(path6) {
-        if (validator.call(path6)) {
+      const newFn = function(path7) {
+        if (validator.call(path7)) {
           return fn.apply(this, arguments);
         }
       };
@@ -49251,24 +49251,24 @@ var require_visitors = __commonJS({
       }
     }
     var _environmentVisitor = {
-      FunctionParent(path6) {
-        if (path6.isArrowFunctionExpression()) return;
-        path6.skip();
-        if (path6.isMethod()) {
-          if (!path6.requeueComputedKeyAndDecorators) {
-            _context.requeueComputedKeyAndDecorators.call(path6);
+      FunctionParent(path7) {
+        if (path7.isArrowFunctionExpression()) return;
+        path7.skip();
+        if (path7.isMethod()) {
+          if (!path7.requeueComputedKeyAndDecorators) {
+            _context.requeueComputedKeyAndDecorators.call(path7);
           } else {
-            path6.requeueComputedKeyAndDecorators();
+            path7.requeueComputedKeyAndDecorators();
           }
         }
       },
-      Property(path6) {
-        if (path6.isObjectProperty()) return;
-        path6.skip();
-        if (!path6.requeueComputedKeyAndDecorators) {
-          _context.requeueComputedKeyAndDecorators.call(path6);
+      Property(path7) {
+        if (path7.isObjectProperty()) return;
+        path7.skip();
+        if (!path7.requeueComputedKeyAndDecorators) {
+          _context.requeueComputedKeyAndDecorators.call(path7);
         } else {
-          path6.requeueComputedKeyAndDecorators();
+          path7.requeueComputedKeyAndDecorators();
         }
       }
     };
@@ -49302,18 +49302,18 @@ var require_renamer = __commonJS({
           node.name = state.newName;
         }
       },
-      Scope(path6, state) {
-        if (!path6.scope.bindingIdentifierEquals(state.oldName, state.binding.identifier)) {
-          path6.skip();
-          if (path6.isMethod()) {
-            if (!path6.requeueComputedKeyAndDecorators) {
-              _context.requeueComputedKeyAndDecorators.call(path6);
+      Scope(path7, state) {
+        if (!path7.scope.bindingIdentifierEquals(state.oldName, state.binding.identifier)) {
+          path7.skip();
+          if (path7.isMethod()) {
+            if (!path7.requeueComputedKeyAndDecorators) {
+              _context.requeueComputedKeyAndDecorators.call(path7);
             } else {
-              path6.requeueComputedKeyAndDecorators();
+              path7.requeueComputedKeyAndDecorators();
             }
           }
-          if (path6.isSwitchStatement()) {
-            path6.context.maybeQueue(path6.get("discriminant"));
+          if (path7.isSwitchStatement()) {
+            path7.context.maybeQueue(path7.get("discriminant"));
           }
         }
       },
@@ -49330,9 +49330,9 @@ var require_renamer = __commonJS({
           if ((_node$extra = node.extra) != null && _node$extra.shorthand) node.extra.shorthand = false;
         }
       },
-      "AssignmentExpression|Declaration|VariableDeclarator"(path6, state) {
-        if (path6.isVariableDeclaration()) return;
-        const ids = path6.isAssignmentExpression() ? getAssignmentIdentifiers(path6.node) : path6.getOuterBindingIdentifiers();
+      "AssignmentExpression|Declaration|VariableDeclarator"(path7, state) {
+        if (path7.isVariableDeclaration()) return;
+        const ids = path7.isAssignmentExpression() ? getAssignmentIdentifiers(path7.node) : path7.getOuterBindingIdentifiers();
         for (const name in ids) {
           if (name === state.oldName) ids[name].name = state.newName;
         }
@@ -49362,11 +49362,11 @@ var require_renamer = __commonJS({
         }
         maybeExportDeclar.splitExportDeclaration();
       }
-      maybeConvertFromClassFunctionDeclaration(path6) {
-        return path6;
+      maybeConvertFromClassFunctionDeclaration(path7) {
+        return path7;
       }
-      maybeConvertFromClassFunctionExpression(path6) {
-        return path6;
+      maybeConvertFromClassFunctionExpression(path7) {
+        return path7;
       }
       rename() {
         const {
@@ -49376,9 +49376,9 @@ var require_renamer = __commonJS({
         } = this;
         const {
           scope,
-          path: path6
+          path: path7
         } = binding;
-        const parentDeclar = path6.find((path7) => path7.isDeclaration() || path7.isFunctionExpression() || path7.isClassExpression());
+        const parentDeclar = path7.find((path8) => path8.isDeclaration() || path8.isFunctionExpression() || path8.isClassExpression());
         if (parentDeclar) {
           const bindingIds = parentDeclar.getOuterBindingIdentifiers();
           if (bindingIds[oldName] === binding.identifier) {
@@ -49404,8 +49404,8 @@ var require_renamer = __commonJS({
           this.binding.identifier.name = newName;
         }
         if (parentDeclar) {
-          this.maybeConvertFromClassFunctionDeclaration(path6);
-          this.maybeConvertFromClassFunctionExpression(path6);
+          this.maybeConvertFromClassFunctionDeclaration(path7);
+          this.maybeConvertFromClassFunctionExpression(path7);
         }
       }
     };
@@ -49428,17 +49428,17 @@ var require_traverseForScope = __commonJS({
     var {
       VISITOR_KEYS
     } = _t;
-    function traverseForScope(path6, visitors, state) {
+    function traverseForScope(path7, visitors, state) {
       const exploded = (0, _visitors.explode)(visitors);
       if (exploded.enter || exploded.exit) {
         throw new Error("Should not be used with enter/exit visitors.");
       }
-      _traverse(path6.parentPath, path6.parent, path6.node, path6.container, path6.key, path6.listKey, path6.hub, path6);
+      _traverse(path7.parentPath, path7.parent, path7.node, path7.container, path7.key, path7.listKey, path7.hub, path7);
       function _traverse(parentPath, parent, node, container, key, listKey, hub, inPath) {
         if (!node) {
           return;
         }
-        const path7 = inPath || _index.NodePath.get({
+        const path8 = inPath || _index.NodePath.get({
           hub,
           parentPath,
           parent,
@@ -49446,14 +49446,14 @@ var require_traverseForScope = __commonJS({
           listKey,
           key
         });
-        _context._forceSetScope.call(path7);
+        _context._forceSetScope.call(path8);
         const visitor = exploded[node.type];
         if (visitor != null && visitor.enter) {
           for (const visit of visitor.enter) {
-            visit.call(state, path7, state);
+            visit.call(state, path8, state);
           }
         }
-        if (path7.shouldSkip) {
+        if (path8.shouldSkip) {
           return;
         }
         const keys = VISITOR_KEYS[node.type];
@@ -49466,15 +49466,15 @@ var require_traverseForScope = __commonJS({
           if (Array.isArray(prop)) {
             for (let i = 0; i < prop.length; i++) {
               const value = prop[i];
-              _traverse(path7, node, value, prop, i, key2);
+              _traverse(path8, node, value, prop, i, key2);
             }
           } else {
-            _traverse(path7, node, prop, node, key2, null);
+            _traverse(path8, node, prop, node, key2, null);
           }
         }
         if (visitor != null && visitor.exit) {
           for (const visit of visitor.exit) {
-            visit.call(state, path7, state);
+            visit.call(state, path8, state);
           }
         }
       }
@@ -49494,7 +49494,7 @@ var require_binding = __commonJS({
       constructor({
         identifier,
         scope,
-        path: path6,
+        path: path7,
         kind
       }) {
         this.identifier = void 0;
@@ -49508,10 +49508,10 @@ var require_binding = __commonJS({
         this.references = 0;
         this.identifier = identifier;
         this.scope = scope;
-        this.path = path6;
+        this.path = path7;
         this.kind = kind;
-        if ((kind === "var" || kind === "hoisted") && isInitInLoop(path6)) {
-          this.reassign(path6);
+        if ((kind === "var" || kind === "hoisted") && isInitInLoop(path7)) {
+          this.reassign(path7);
         }
         this.clearValue();
       }
@@ -49529,20 +49529,20 @@ var require_binding = __commonJS({
         this.hasValue = false;
         this.value = null;
       }
-      reassign(path6) {
+      reassign(path7) {
         this.constant = false;
-        if (this.constantViolations.includes(path6)) {
+        if (this.constantViolations.includes(path7)) {
           return;
         }
-        this.constantViolations.push(path6);
+        this.constantViolations.push(path7);
       }
-      reference(path6) {
-        if (this.referencePaths.includes(path6)) {
+      reference(path7) {
+        if (this.referencePaths.includes(path7)) {
           return;
         }
         this.referenced = true;
         this.references++;
-        this.referencePaths.push(path6);
+        this.referencePaths.push(path7);
       }
       dereference() {
         this.references--;
@@ -49550,12 +49550,12 @@ var require_binding = __commonJS({
       }
     };
     exports2.default = Binding;
-    function isInitInLoop(path6) {
-      const isFunctionDeclarationOrHasInit = !path6.isVariableDeclarator() || path6.node.init;
+    function isInitInLoop(path7) {
+      const isFunctionDeclarationOrHasInit = !path7.isVariableDeclarator() || path7.node.init;
       for (let {
         parentPath,
         key
-      } = path6; parentPath; {
+      } = path7; parentPath; {
         parentPath,
         key
       } = parentPath) {
@@ -49594,11 +49594,11 @@ var require_cache2 = __commonJS({
     function clearScope() {
       exports2.scope = scope = /* @__PURE__ */ new WeakMap();
     }
-    function getCachedPaths(path6) {
+    function getCachedPaths(path7) {
       const {
         parent,
         parentPath
-      } = path6;
+      } = path7;
       return pathsCache.get(parent);
     }
     function getOrCreateCachedPaths(node, parentPath) {
@@ -49736,7 +49736,7 @@ var require_scope = __commonJS({
       isTemplateLiteral: isTemplateLiteral2,
       isThisExpression: isThisExpression2,
       isUnaryExpression,
-      isVariableDeclaration,
+      isVariableDeclaration: isVariableDeclaration2,
       expressionStatement,
       matchesPattern,
       memberExpression,
@@ -49744,7 +49744,7 @@ var require_scope = __commonJS({
       toIdentifier,
       variableDeclaration,
       variableDeclarator,
-      isObjectProperty,
+      isObjectProperty: isObjectProperty2,
       isTopicReference,
       isMetaProperty,
       isPrivateName,
@@ -49874,128 +49874,128 @@ var require_scope = __commonJS({
       scope.bindings = /* @__PURE__ */ Object.create(null);
       scope.globals = /* @__PURE__ */ Object.create(null);
     }
-    function isAnonymousFunctionExpression(path6) {
-      return path6.isFunctionExpression() && !path6.node.id || path6.isArrowFunctionExpression();
+    function isAnonymousFunctionExpression(path7) {
+      return path7.isFunctionExpression() && !path7.node.id || path7.isArrowFunctionExpression();
     }
     var NOT_LOCAL_BINDING = /* @__PURE__ */ Symbol.for("should not be considered a local binding");
     var collectorVisitor = {
-      ForStatement(path6) {
-        const declar = path6.get("init");
+      ForStatement(path7) {
+        const declar = path7.get("init");
         if (declar.isVar()) {
           const {
             scope
-          } = path6;
+          } = path7;
           const parentScope = scope.getFunctionParent() || scope.getProgramParent();
           parentScope.registerBinding("var", declar);
         }
       },
-      Declaration(path6) {
-        if (path6.isBlockScoped()) return;
-        if (path6.isImportDeclaration()) return;
-        if (path6.isExportDeclaration()) return;
-        const parent = path6.scope.getFunctionParent() || path6.scope.getProgramParent();
-        parent.registerDeclaration(path6);
+      Declaration(path7) {
+        if (path7.isBlockScoped()) return;
+        if (path7.isImportDeclaration()) return;
+        if (path7.isExportDeclaration()) return;
+        const parent = path7.scope.getFunctionParent() || path7.scope.getProgramParent();
+        parent.registerDeclaration(path7);
       },
-      ImportDeclaration(path6) {
-        const parent = path6.scope.getBlockParent();
-        parent.registerDeclaration(path6);
+      ImportDeclaration(path7) {
+        const parent = path7.scope.getBlockParent();
+        parent.registerDeclaration(path7);
       },
-      TSImportEqualsDeclaration(path6) {
-        const parent = path6.scope.getBlockParent();
-        parent.registerDeclaration(path6);
+      TSImportEqualsDeclaration(path7) {
+        const parent = path7.scope.getBlockParent();
+        parent.registerDeclaration(path7);
       },
-      ReferencedIdentifier(path6, state) {
-        if (t2.isTSQualifiedName(path6.parent) && path6.parent.right === path6.node) {
+      ReferencedIdentifier(path7, state) {
+        if (t2.isTSQualifiedName(path7.parent) && path7.parent.right === path7.node) {
           return;
         }
-        if (path6.parentPath.isTSImportEqualsDeclaration()) return;
-        state.references.push(path6);
+        if (path7.parentPath.isTSImportEqualsDeclaration()) return;
+        state.references.push(path7);
       },
-      ForXStatement(path6, state) {
-        const left = path6.get("left");
+      ForXStatement(path7, state) {
+        const left = path7.get("left");
         if (left.isPattern() || left.isIdentifier()) {
-          state.constantViolations.push(path6);
+          state.constantViolations.push(path7);
         } else if (left.isVar()) {
           const {
             scope
-          } = path6;
+          } = path7;
           const parentScope = scope.getFunctionParent() || scope.getProgramParent();
           parentScope.registerBinding("var", left);
         }
       },
       ExportDeclaration: {
-        exit(path6) {
+        exit(path7) {
           const {
             node,
             scope
-          } = path6;
+          } = path7;
           if (isExportAllDeclaration(node)) return;
           const declar = node.declaration;
           if (isClassDeclaration(declar) || isFunctionDeclaration(declar)) {
             const id = declar.id;
             if (!id) return;
             const binding = scope.getBinding(id.name);
-            binding == null || binding.reference(path6);
-          } else if (isVariableDeclaration(declar)) {
+            binding == null || binding.reference(path7);
+          } else if (isVariableDeclaration2(declar)) {
             for (const decl of declar.declarations) {
               for (const name of Object.keys(getBindingIdentifiers(decl))) {
                 const binding = scope.getBinding(name);
-                binding == null || binding.reference(path6);
+                binding == null || binding.reference(path7);
               }
             }
           }
         }
       },
-      LabeledStatement(path6) {
-        path6.scope.getBlockParent().registerDeclaration(path6);
+      LabeledStatement(path7) {
+        path7.scope.getBlockParent().registerDeclaration(path7);
       },
-      AssignmentExpression(path6, state) {
-        state.assignments.push(path6);
+      AssignmentExpression(path7, state) {
+        state.assignments.push(path7);
       },
-      UpdateExpression(path6, state) {
-        state.constantViolations.push(path6);
+      UpdateExpression(path7, state) {
+        state.constantViolations.push(path7);
       },
-      UnaryExpression(path6, state) {
-        if (path6.node.operator === "delete") {
-          state.constantViolations.push(path6);
+      UnaryExpression(path7, state) {
+        if (path7.node.operator === "delete") {
+          state.constantViolations.push(path7);
         }
       },
-      BlockScoped(path6) {
-        let scope = path6.scope;
-        if (scope.path === path6) scope = scope.parent;
+      BlockScoped(path7) {
+        let scope = path7.scope;
+        if (scope.path === path7) scope = scope.parent;
         const parent = scope.getBlockParent();
-        parent.registerDeclaration(path6);
-        if (path6.isClassDeclaration() && path6.node.id) {
-          const id = path6.node.id;
+        parent.registerDeclaration(path7);
+        if (path7.isClassDeclaration() && path7.node.id) {
+          const id = path7.node.id;
           const name = id.name;
-          path6.scope.bindings[name] = path6.scope.parent.getBinding(name);
+          path7.scope.bindings[name] = path7.scope.parent.getBinding(name);
         }
       },
-      CatchClause(path6) {
-        path6.scope.registerBinding("let", path6);
+      CatchClause(path7) {
+        path7.scope.registerBinding("let", path7);
       },
-      Function(path6) {
-        const params = path6.get("params");
+      Function(path7) {
+        const params = path7.get("params");
         for (const param of params) {
-          path6.scope.registerBinding("param", param);
+          path7.scope.registerBinding("param", param);
         }
-        if (path6.isFunctionExpression() && path6.node.id && !path6.node.id[NOT_LOCAL_BINDING]) {
-          path6.scope.registerBinding("local", path6.get("id"), path6);
-        }
-      },
-      ClassExpression(path6) {
-        if (path6.node.id && !path6.node.id[NOT_LOCAL_BINDING]) {
-          path6.scope.registerBinding("local", path6.get("id"), path6);
+        if (path7.isFunctionExpression() && path7.node.id && !path7.node.id[NOT_LOCAL_BINDING]) {
+          path7.scope.registerBinding("local", path7.get("id"), path7);
         }
       },
-      TSTypeAnnotation(path6) {
-        path6.skip();
+      ClassExpression(path7) {
+        if (path7.node.id && !path7.node.id[NOT_LOCAL_BINDING]) {
+          path7.scope.registerBinding("local", path7.get("id"), path7);
+        }
+      },
+      TSTypeAnnotation(path7) {
+        path7.skip();
       }
     };
     var scopeVisitor;
     var uid = 0;
     var Scope = class _Scope {
-      constructor(path6) {
+      constructor(path7) {
         this.uid = void 0;
         this.path = void 0;
         this.block = void 0;
@@ -50009,15 +50009,15 @@ var require_scope = __commonJS({
         this.crawling = void 0;
         const {
           node
-        } = path6;
+        } = path7;
         const cached = _cache.scope.get(node);
-        if ((cached == null ? void 0 : cached.path) === path6) {
+        if ((cached == null ? void 0 : cached.path) === path7) {
           return cached;
         }
         _cache.scope.set(node, this);
         this.uid = uid++;
         this.block = node;
-        this.path = path6;
+        this.path = path7;
         this.labels = /* @__PURE__ */ new Map();
         this.inited = false;
         Object.defineProperties(this, {
@@ -50037,14 +50037,14 @@ var require_scope = __commonJS({
       }
       get parent() {
         var _parent;
-        let parent, path6 = this.path;
+        let parent, path7 = this.path;
         do {
           var _path;
-          const shouldSkip = path6.key === "key" || path6.listKey === "decorators";
-          path6 = path6.parentPath;
-          if (shouldSkip && path6.isMethod()) path6 = path6.parentPath;
-          if ((_path = path6) != null && _path.isScope()) parent = path6;
-        } while (path6 && !parent);
+          const shouldSkip = path7.key === "key" || path7.listKey === "decorators";
+          path7 = path7.parentPath;
+          if (shouldSkip && path7.isMethod()) path7 = path7.parentPath;
+          if ((_path = path7) != null && _path.isScope()) parent = path7;
+        } while (path7 && !parent);
         return (_parent = parent) == null ? void 0 : _parent.scope;
       }
       get references() {
@@ -50074,9 +50074,9 @@ var require_scope = __commonJS({
           else if (i >= 1) uid2 += i + 1;
           i++;
         } while (this.hasLabel(uid2) || this.hasBinding(uid2) || this.hasGlobal(uid2) || this.hasReference(uid2));
-        const program = this.getProgramParent();
-        program.references[uid2] = true;
-        program.uids[uid2] = true;
+        const program2 = this.getProgramParent();
+        program2.references[uid2] = true;
+        program2.uids[uid2] = true;
         return uid2;
       }
       generateUidBasedOnNode(node, defaultName) {
@@ -50157,62 +50157,62 @@ var require_scope = __commonJS({
       getLabel(name) {
         return this.labels.get(name);
       }
-      registerLabel(path6) {
-        this.labels.set(path6.node.label.name, path6);
+      registerLabel(path7) {
+        this.labels.set(path7.node.label.name, path7);
       }
-      registerDeclaration(path6) {
-        if (path6.isLabeledStatement()) {
-          this.registerLabel(path6);
-        } else if (path6.isFunctionDeclaration()) {
-          this.registerBinding("hoisted", path6.get("id"), path6);
-        } else if (path6.isVariableDeclaration()) {
-          const declarations = path6.get("declarations");
+      registerDeclaration(path7) {
+        if (path7.isLabeledStatement()) {
+          this.registerLabel(path7);
+        } else if (path7.isFunctionDeclaration()) {
+          this.registerBinding("hoisted", path7.get("id"), path7);
+        } else if (path7.isVariableDeclaration()) {
+          const declarations = path7.get("declarations");
           const {
             kind
-          } = path6.node;
+          } = path7.node;
           for (const declar of declarations) {
             this.registerBinding(kind === "using" || kind === "await using" ? "const" : kind, declar);
           }
-        } else if (path6.isClassDeclaration()) {
-          if (path6.node.declare) return;
-          this.registerBinding("let", path6);
-        } else if (path6.isImportDeclaration()) {
-          const isTypeDeclaration = path6.node.importKind === "type" || path6.node.importKind === "typeof";
-          const specifiers = path6.get("specifiers");
+        } else if (path7.isClassDeclaration()) {
+          if (path7.node.declare) return;
+          this.registerBinding("let", path7);
+        } else if (path7.isImportDeclaration()) {
+          const isTypeDeclaration = path7.node.importKind === "type" || path7.node.importKind === "typeof";
+          const specifiers = path7.get("specifiers");
           for (const specifier of specifiers) {
             const isTypeSpecifier = isTypeDeclaration || specifier.isImportSpecifier() && (specifier.node.importKind === "type" || specifier.node.importKind === "typeof");
             this.registerBinding(isTypeSpecifier ? "unknown" : "module", specifier);
           }
-        } else if (path6.isExportDeclaration()) {
-          const declar = path6.get("declaration");
+        } else if (path7.isExportDeclaration()) {
+          const declar = path7.get("declaration");
           if (declar.isClassDeclaration() || declar.isFunctionDeclaration() || declar.isVariableDeclaration()) {
             this.registerDeclaration(declar);
           }
         } else {
-          this.registerBinding("unknown", path6);
+          this.registerBinding("unknown", path7);
         }
       }
       buildUndefinedNode() {
         return buildUndefinedNode();
       }
-      registerConstantViolation(path6) {
-        const ids = path6.getAssignmentIdentifiers();
+      registerConstantViolation(path7) {
+        const ids = path7.getAssignmentIdentifiers();
         for (const name of Object.keys(ids)) {
           var _this$getBinding;
-          (_this$getBinding = this.getBinding(name)) == null || _this$getBinding.reassign(path6);
+          (_this$getBinding = this.getBinding(name)) == null || _this$getBinding.reassign(path7);
         }
       }
-      registerBinding(kind, path6, bindingPath = path6) {
+      registerBinding(kind, path7, bindingPath = path7) {
         if (!kind) throw new ReferenceError("no `kind`");
-        if (path6.isVariableDeclaration()) {
-          const declarators = path6.get("declarations");
+        if (path7.isVariableDeclaration()) {
+          const declarators = path7.get("declarations");
           for (const declar of declarators) {
             this.registerBinding(kind, declar);
           }
           return;
         }
         const parent = this.getProgramParent();
-        const ids = path6.getOuterBindingIdentifiers(true);
+        const ids = path7.getOuterBindingIdentifiers(true);
         for (const name of Object.keys(ids)) {
           parent.references[name] = true;
           for (const id of ids[name]) {
@@ -50301,7 +50301,7 @@ var require_scope = __commonJS({
           if (((_node$decorators3 = node.decorators) == null ? void 0 : _node$decorators3.length) > 0) {
             return false;
           }
-          if (isObjectProperty(node) || node.static) {
+          if (isObjectProperty2(node) || node.static) {
             if (node.value !== null && !this.isPure(node.value, constantsOnly)) {
               return false;
             }
@@ -50354,7 +50354,7 @@ var require_scope = __commonJS({
         }
       }
       crawl() {
-        const path6 = this.path;
+        const path7 = this.path;
         resetScope(this);
         this.data = /* @__PURE__ */ Object.create(null);
         let scope = this;
@@ -50372,27 +50372,27 @@ var require_scope = __commonJS({
         };
         this.crawling = true;
         scopeVisitor || (scopeVisitor = _index.default.visitors.merge([{
-          Scope(path7) {
-            resetScope(path7.scope);
+          Scope(path8) {
+            resetScope(path8.scope);
           }
         }, collectorVisitor]));
-        if (path6.type !== "Program") {
-          const typeVisitors = scopeVisitor[path6.type];
+        if (path7.type !== "Program") {
+          const typeVisitors = scopeVisitor[path7.type];
           if (typeVisitors) {
             for (const visit of typeVisitors.enter) {
-              visit.call(state, path6, state);
+              visit.call(state, path7, state);
             }
           }
         }
-        path6.traverse(scopeVisitor, state);
+        path7.traverse(scopeVisitor, state);
         this.crawling = false;
-        for (const path7 of state.assignments) {
-          const ids = path7.getAssignmentIdentifiers();
+        for (const path8 of state.assignments) {
+          const ids = path8.getAssignmentIdentifiers();
           for (const name of Object.keys(ids)) {
-            if (path7.scope.getBinding(name)) continue;
+            if (path8.scope.getBinding(name)) continue;
             programParent.addGlobal(ids[name]);
           }
-          path7.scope.registerConstantViolation(path7);
+          path8.scope.registerConstantViolation(path8);
         }
         for (const ref of state.references) {
           const binding = ref.scope.getBinding(ref.node.name);
@@ -50402,19 +50402,19 @@ var require_scope = __commonJS({
             programParent.addGlobal(ref.node);
           }
         }
-        for (const path7 of state.constantViolations) {
-          path7.scope.registerConstantViolation(path7);
+        for (const path8 of state.constantViolations) {
+          path8.scope.registerConstantViolation(path8);
         }
       }
       push(opts) {
-        let path6 = this.path;
-        if (path6.isPattern()) {
-          path6 = this.getPatternParent().path;
-        } else if (!path6.isBlockStatement() && !path6.isProgram()) {
-          path6 = this.getBlockParent().path;
+        let path7 = this.path;
+        if (path7.isPattern()) {
+          path7 = this.getPatternParent().path;
+        } else if (!path7.isBlockStatement() && !path7.isProgram()) {
+          path7 = this.getBlockParent().path;
         }
-        if (path6.isSwitchStatement()) {
-          path6 = (this.getFunctionParent() || this.getProgramParent()).path;
+        if (path7.isSwitchStatement()) {
+          path7 = (this.getFunctionParent() || this.getProgramParent()).path;
         }
         const {
           init,
@@ -50422,29 +50422,29 @@ var require_scope = __commonJS({
           kind = "var",
           id
         } = opts;
-        if (!init && !unique && (kind === "var" || kind === "let") && isAnonymousFunctionExpression(path6) && isCallExpression2(path6.parent, {
-          callee: path6.node
-        }) && path6.parent.arguments.length <= path6.node.params.length && isIdentifier2(id)) {
-          path6.pushContainer("params", id);
-          path6.scope.registerBinding("param", path6.get("params")[path6.node.params.length - 1]);
+        if (!init && !unique && (kind === "var" || kind === "let") && isAnonymousFunctionExpression(path7) && isCallExpression2(path7.parent, {
+          callee: path7.node
+        }) && path7.parent.arguments.length <= path7.node.params.length && isIdentifier2(id)) {
+          path7.pushContainer("params", id);
+          path7.scope.registerBinding("param", path7.get("params")[path7.node.params.length - 1]);
           return;
         }
-        if (path6.isLoop() || path6.isCatchClause() || path6.isFunction()) {
-          path6.ensureBlock();
-          path6 = path6.get("body");
+        if (path7.isLoop() || path7.isCatchClause() || path7.isFunction()) {
+          path7.ensureBlock();
+          path7 = path7.get("body");
         }
         const blockHoist = opts._blockHoist == null ? 2 : opts._blockHoist;
         const dataKey = `declaration:${kind}:${blockHoist}`;
-        let declarPath = !unique && path6.getData(dataKey);
+        let declarPath = !unique && path7.getData(dataKey);
         if (!declarPath) {
           const declar = variableDeclaration(kind, []);
           declar._blockHoist = blockHoist;
-          [declarPath] = path6.unshiftContainer("body", [declar]);
-          if (!unique) path6.setData(dataKey, declarPath);
+          [declarPath] = path7.unshiftContainer("body", [declar]);
+          if (!unique) path7.setData(dataKey, declarPath);
         }
         const declarator = variableDeclarator(id, init);
         const len = declarPath.node.declarations.push(declarator);
-        path6.scope.registerBinding(kind, declarPath.get("declarations")[len - 1]);
+        path7.scope.registerBinding(kind, declarPath.get("declarations")[len - 1]);
       }
       getProgramParent() {
         let scope = this;
@@ -50589,15 +50589,15 @@ var require_scope = __commonJS({
           const binding = this.bindings[name];
           if (!binding) continue;
           const {
-            path: path6
+            path: path7
           } = binding;
-          if (!path6.isVariableDeclarator()) continue;
+          if (!path7.isVariableDeclarator()) continue;
           const {
             parent,
             parentPath
-          } = path6;
+          } = path7;
           if (parent.kind !== "var" || seen.has(parent)) continue;
-          seen.add(path6.parent);
+          seen.add(path7.parent);
           let firstId;
           const init = [];
           for (const decl of parent.declarations) {
@@ -51204,16 +51204,16 @@ var require_resolve_uri_umd = __commonJS({
       }
       function parseFileUrl(input) {
         const match = fileRegex.exec(input);
-        const path6 = match[2];
-        return makeUrl("file:", "", match[1] || "", "", isAbsolutePath(path6) ? path6 : "/" + path6, match[3] || "", match[4] || "");
+        const path7 = match[2];
+        return makeUrl("file:", "", match[1] || "", "", isAbsolutePath(path7) ? path7 : "/" + path7, match[3] || "", match[4] || "");
       }
-      function makeUrl(scheme, user, host, port, path6, query, hash) {
+      function makeUrl(scheme, user, host, port, path7, query, hash) {
         return {
           scheme,
           user,
           host,
           port,
-          path: path6,
+          path: path7,
           query,
           hash,
           type: 7
@@ -51243,11 +51243,11 @@ var require_resolve_uri_umd = __commonJS({
         url.type = input ? input.startsWith("?") ? 3 : input.startsWith("#") ? 2 : 4 : 1;
         return url;
       }
-      function stripPathFilename(path6) {
-        if (path6.endsWith("/.."))
-          return path6;
-        const index = path6.lastIndexOf("/");
-        return path6.slice(0, index + 1);
+      function stripPathFilename(path7) {
+        if (path7.endsWith("/.."))
+          return path7;
+        const index = path7.lastIndexOf("/");
+        return path7.slice(0, index + 1);
       }
       function mergePaths(url, base) {
         normalizePath(base, base.type);
@@ -51285,14 +51285,14 @@ var require_resolve_uri_umd = __commonJS({
           pieces[pointer++] = piece;
           positive++;
         }
-        let path6 = "";
+        let path7 = "";
         for (let i = 1; i < pointer; i++) {
-          path6 += "/" + pieces[i];
+          path7 += "/" + pieces[i];
         }
-        if (!path6 || addTrailingSlash && !path6.endsWith("/..")) {
-          path6 += "/";
+        if (!path7 || addTrailingSlash && !path7.endsWith("/..")) {
+          path7 += "/";
         }
-        url.path = path6;
+        url.path = path7;
       }
       function resolve(input, base) {
         if (!input && !base)
@@ -51333,13 +51333,13 @@ var require_resolve_uri_umd = __commonJS({
           case 3:
             return queryHash;
           case 4: {
-            const path6 = url.path.slice(1);
-            if (!path6)
+            const path7 = url.path.slice(1);
+            if (!path7)
               return queryHash || ".";
-            if (isRelative(base || input) && !isRelative(path6)) {
-              return "./" + path6 + queryHash;
+            if (isRelative(base || input) && !isRelative(path7)) {
+              return "./" + path7 + queryHash;
             }
-            return path6 + queryHash;
+            return path7 + queryHash;
           }
           case 5:
             return url.path + queryHash;
@@ -51439,10 +51439,10 @@ var require_trace_mapping_umd = __commonJS({
       module3.exports = __toCommonJS(trace_mapping_exports);
       var import_sourcemap_codec = __toESM2(require_sourcemap_codec());
       var import_resolve_uri = __toESM2(require_resolve_uri());
-      function stripFilename(path6) {
-        if (!path6) return "";
-        const index = path6.lastIndexOf("/");
-        return path6.slice(0, index + 1);
+      function stripFilename(path7) {
+        if (!path7) return "";
+        const index = path7.lastIndexOf("/");
+        return path7.slice(0, index + 1);
       }
       function resolver(mapUrl, sourceRoot) {
         const from = stripFilename(mapUrl);
@@ -51685,9 +51685,9 @@ var require_trace_mapping_umd = __commonJS({
           const isString = typeof map === "string";
           if (!isString && map._decodedMemo) return map;
           const parsed = parse4(map);
-          const { version, file, names, sourceRoot, sources, sourcesContent } = parsed;
+          const { version, file: file2, names, sourceRoot, sources, sourcesContent } = parsed;
           this.version = version;
-          this.file = file;
+          this.file = file2;
           this.names = names || [];
           this.sourceRoot = sourceRoot;
           this.sources = sources;
@@ -52012,12 +52012,12 @@ var require_gen_mapping_umd = __commonJS({
       var NAMES_INDEX = 4;
       var NO_NAME = -1;
       var GenMapping = class {
-        constructor({ file, sourceRoot } = {}) {
+        constructor({ file: file2, sourceRoot } = {}) {
           this._names = new SetArray();
           this._sources = new SetArray();
           this._sourcesContent = [];
           this._mappings = [];
-          this.file = file;
+          this.file = file2;
           this.sourceRoot = sourceRoot;
           this._ignoreList = new SetArray();
         }
@@ -52618,7 +52618,7 @@ var require_parentheses = __commonJS({
     var _index = require_node2();
     var {
       isMemberExpression: isMemberExpression2,
-      isOptionalMemberExpression,
+      isOptionalMemberExpression: isOptionalMemberExpression2,
       isYieldExpression,
       isStatement
     } = _t;
@@ -52864,7 +52864,7 @@ var require_parentheses = __commonJS({
           const isFollowedByBracket = isMemberExpression2(parent, {
             object: node,
             computed: true
-          }) || isOptionalMemberExpression(parent, {
+          }) || isOptionalMemberExpression2(parent, {
             object: node,
             computed: true,
             optional: false
@@ -55070,7 +55070,7 @@ var require_types = __commonJS({
     var _jsesc = require_jsesc();
     var _methods = require_methods();
     var {
-      isAssignmentPattern,
+      isAssignmentPattern: isAssignmentPattern2,
       isIdentifier: isIdentifier2
     } = _t;
     var lastRawIdentResult = "";
@@ -55124,7 +55124,7 @@ var require_types = __commonJS({
         this.print(node.key);
         this.tokenChar(93);
       } else {
-        if (isAssignmentPattern(node.value) && isIdentifier2(node.key) && node.key.name === node.value.left.name) {
+        if (isAssignmentPattern2(node.value) && isIdentifier2(node.key) && node.key.name === node.value.left.name) {
           this.print(node.value);
           return;
         }
@@ -57754,56 +57754,56 @@ var require_ancestry = __commonJS({
       VISITOR_KEYS
     } = _t;
     function findParent(callback) {
-      let path6 = this;
-      while (path6 = path6.parentPath) {
-        if (callback(path6)) return path6;
+      let path7 = this;
+      while (path7 = path7.parentPath) {
+        if (callback(path7)) return path7;
       }
       return null;
     }
     function find(callback) {
-      let path6 = this;
+      let path7 = this;
       do {
-        if (callback(path6)) return path6;
-      } while (path6 = path6.parentPath);
+        if (callback(path7)) return path7;
+      } while (path7 = path7.parentPath);
       return null;
     }
     function getFunctionParent() {
       return this.findParent((p) => p.isFunction());
     }
     function getStatementParent() {
-      let path6 = this;
+      let path7 = this;
       do {
-        if (!path6.parentPath || Array.isArray(path6.container) && path6.isStatement()) {
+        if (!path7.parentPath || Array.isArray(path7.container) && path7.isStatement()) {
           break;
         } else {
-          path6 = path6.parentPath;
+          path7 = path7.parentPath;
         }
-      } while (path6);
-      if (path6 && (path6.isProgram() || path6.isFile())) {
+      } while (path7);
+      if (path7 && (path7.isProgram() || path7.isFile())) {
         throw new Error("File/Program node, we can't possibly find a statement parent to this");
       }
-      return path6;
+      return path7;
     }
     function getEarliestCommonAncestorFrom(paths) {
       return this.getDeepestCommonAncestorFrom(paths, function(deepest, i, ancestries) {
         let earliest;
         const keys = VISITOR_KEYS[deepest.type];
         for (const ancestry of ancestries) {
-          const path6 = ancestry[i + 1];
+          const path7 = ancestry[i + 1];
           if (!earliest) {
-            earliest = path6;
+            earliest = path7;
             continue;
           }
-          if (path6.listKey && earliest.listKey === path6.listKey) {
-            if (path6.key < earliest.key) {
-              earliest = path6;
+          if (path7.listKey && earliest.listKey === path7.listKey) {
+            if (path7.key < earliest.key) {
+              earliest = path7;
               continue;
             }
           }
           const earliestKeyIndex = keys.indexOf(earliest.parentKey);
-          const currentKeyIndex = keys.indexOf(path6.parentKey);
+          const currentKeyIndex = keys.indexOf(path7.parentKey);
           if (earliestKeyIndex > currentKeyIndex) {
-            earliest = path6;
+            earliest = path7;
           }
         }
         return earliest;
@@ -57818,11 +57818,11 @@ var require_ancestry = __commonJS({
       }
       let minDepth = Infinity;
       let lastCommonIndex, lastCommon;
-      const ancestries = paths.map((path6) => {
+      const ancestries = paths.map((path7) => {
         const ancestry = [];
         do {
-          ancestry.unshift(path6);
-        } while ((path6 = path6.parentPath) && path6 !== this);
+          ancestry.unshift(path7);
+        } while ((path7 = path7.parentPath) && path7 !== this);
         if (ancestry.length < minDepth) {
           minDepth = ancestry.length;
         }
@@ -57850,11 +57850,11 @@ var require_ancestry = __commonJS({
       }
     }
     function getAncestry() {
-      let path6 = this;
+      let path7 = this;
       const paths = [];
       do {
-        paths.push(path6);
-      } while (path6 = path6.parentPath);
+        paths.push(path7);
+      } while (path7 = path7.parentPath);
       return paths;
     }
     function isAncestor(maybeDescendant) {
@@ -57864,10 +57864,10 @@ var require_ancestry = __commonJS({
       return !!this.findParent((parent) => parent === maybeAncestor);
     }
     function inType(...candidateTypes) {
-      let path6 = this;
-      while (path6) {
-        if (candidateTypes.includes(path6.node.type)) return true;
-        path6 = path6.parentPath;
+      let path7 = this;
+      while (path7) {
+        if (candidateTypes.includes(path7.node.type)) return true;
+        path7 = path7.parentPath;
       }
       return false;
     }
@@ -57938,14 +57938,14 @@ var require_inferer_reference = __commonJS({
       } else if (node.name === "arguments") {
       }
     }
-    function getTypeAnnotationBindingConstantViolations(binding, path6, name) {
+    function getTypeAnnotationBindingConstantViolations(binding, path7, name) {
       const types = [];
       const functionConstantViolations = [];
-      let constantViolations = getConstantViolationsBefore(binding, path6, functionConstantViolations);
-      const testType = getConditionalAnnotation(binding, path6, name);
+      let constantViolations = getConstantViolationsBefore(binding, path7, functionConstantViolations);
+      const testType = getConditionalAnnotation(binding, path7, name);
       if (testType) {
         const testConstantViolations = getConstantViolationsBefore(binding, testType.ifStatement);
-        constantViolations = constantViolations.filter((path7) => !testConstantViolations.includes(path7));
+        constantViolations = constantViolations.filter((path8) => !testConstantViolations.includes(path8));
         types.push(testType.typeAnnotation);
       }
       if (constantViolations.length) {
@@ -57959,20 +57959,20 @@ var require_inferer_reference = __commonJS({
       }
       return (0, _util.createUnionType)(types);
     }
-    function getConstantViolationsBefore(binding, path6, functions) {
+    function getConstantViolationsBefore(binding, path7, functions) {
       const violations = binding.constantViolations.slice();
       violations.unshift(binding.path);
       return violations.filter((violation) => {
         violation = violation.resolve();
-        const status = violation._guessExecutionStatusRelativeTo(path6);
+        const status = violation._guessExecutionStatusRelativeTo(path7);
         if (functions && status === "unknown") functions.push(violation);
         return status === "before";
       });
     }
-    function inferAnnotationFromBinaryExpression(name, path6) {
-      const operator = path6.node.operator;
-      const right = path6.get("right").resolve();
-      const left = path6.get("left").resolve();
+    function inferAnnotationFromBinaryExpression(name, path7) {
+      const operator = path7.node.operator;
+      const right = path7.get("right").resolve();
+      const left = path7.get("left").resolve();
       let target;
       if (left.isIdentifier({
         name
@@ -58016,11 +58016,11 @@ var require_inferer_reference = __commonJS({
       if (typeof typeValue !== "string") return;
       return createTypeAnnotationBasedOnTypeof(typeValue);
     }
-    function getParentConditionalPath(binding, path6, name) {
+    function getParentConditionalPath(binding, path7, name) {
       let parentPath;
-      while (parentPath = path6.parentPath) {
+      while (parentPath = path7.parentPath) {
         if (parentPath.isIfStatement() || parentPath.isConditionalExpression()) {
-          if (path6.key === "test") {
+          if (path7.key === "test") {
             return;
           }
           return parentPath;
@@ -58028,24 +58028,24 @@ var require_inferer_reference = __commonJS({
         if (parentPath.isFunction()) {
           if (name == null || parentPath.parentPath.scope.getBinding(name) !== binding) return;
         }
-        path6 = parentPath;
+        path7 = parentPath;
       }
     }
-    function getConditionalAnnotation(binding, path6, name) {
-      const ifStatement = getParentConditionalPath(binding, path6, name);
+    function getConditionalAnnotation(binding, path7, name) {
+      const ifStatement = getParentConditionalPath(binding, path7, name);
       if (!ifStatement) return;
       const test = ifStatement.get("test");
       const paths = [test];
       const types = [];
       for (let i = 0; i < paths.length; i++) {
-        const path7 = paths[i];
-        if (path7.isLogicalExpression()) {
-          if (path7.node.operator === "&&") {
-            paths.push(path7.get("left"));
-            paths.push(path7.get("right"));
+        const path8 = paths[i];
+        if (path8.isLogicalExpression()) {
+          if (path8.node.operator === "&&") {
+            paths.push(path8.get("left"));
+            paths.push(path8.get("right"));
           }
-        } else if (path7.isBinaryExpression()) {
-          const type = inferAnnotationFromBinaryExpression(name, path7);
+        } else if (path8.isBinaryExpression()) {
+          const type = inferAnnotationFromBinaryExpression(name, path8);
           if (type) types.push(type);
         }
       }
@@ -58866,12 +58866,12 @@ var require_hoister = __commonJS({
       variableDeclarator
     } = _t2;
     var referenceVisitor = {
-      ReferencedIdentifier(path6, state) {
-        if (path6.isJSXIdentifier() && react.isCompatTag(path6.node.name) && !path6.parentPath.isJSXMemberExpression()) {
+      ReferencedIdentifier(path7, state) {
+        if (path7.isJSXIdentifier() && react.isCompatTag(path7.node.name) && !path7.parentPath.isJSXMemberExpression()) {
           return;
         }
-        if (path6.node.name === "this") {
-          let scope = path6.scope;
+        if (path7.node.name === "this") {
+          let scope = path7.scope;
           do {
             if (scope.path.isFunction() && !scope.path.isArrowFunctionExpression()) {
               break;
@@ -58879,21 +58879,21 @@ var require_hoister = __commonJS({
           } while (scope = scope.parent);
           if (scope) state.breakOnScopePaths.push(scope.path);
         }
-        const binding = path6.scope.getBinding(path6.node.name);
+        const binding = path7.scope.getBinding(path7.node.name);
         if (!binding) return;
         for (const violation of binding.constantViolations) {
           if (violation.scope !== binding.path.scope) {
             state.mutableBinding = true;
-            path6.stop();
+            path7.stop();
             return;
           }
         }
-        if (binding !== state.scope.getBinding(path6.node.name)) return;
-        state.bindings[path6.node.name] = binding;
+        if (binding !== state.scope.getBinding(path7.node.name)) return;
+        state.bindings[path7.node.name] = binding;
       }
     };
     var PathHoister = class {
-      constructor(path6, scope) {
+      constructor(path7, scope) {
         this.breakOnScopePaths = void 0;
         this.bindings = void 0;
         this.mutableBinding = void 0;
@@ -58906,7 +58906,7 @@ var require_hoister = __commonJS({
         this.mutableBinding = false;
         this.scopes = [];
         this.scope = scope;
-        this.path = path6;
+        this.path = path7;
         this.attachAfter = false;
       }
       isCompatibleScope(scope) {
@@ -58932,11 +58932,11 @@ var require_hoister = __commonJS({
         } while (scope = scope.parent);
       }
       getAttachmentPath() {
-        let path6 = this._getAttachmentPath();
-        if (!path6) return;
-        let targetScope = path6.scope;
-        if (targetScope.path === path6) {
-          targetScope = path6.scope.parent;
+        let path7 = this._getAttachmentPath();
+        if (!path7) return;
+        let targetScope = path7.scope;
+        if (targetScope.path === path7) {
+          targetScope = path7.scope.parent;
         }
         if (targetScope.path.isProgram() || targetScope.path.isFunction()) {
           for (const name of Object.keys(this.bindings)) {
@@ -58946,18 +58946,18 @@ var require_hoister = __commonJS({
               continue;
             }
             const bindingParentPath = this.getAttachmentParentForPath(binding.path);
-            if (bindingParentPath.key >= path6.key) {
+            if (bindingParentPath.key >= path7.key) {
               this.attachAfter = true;
-              path6 = binding.path;
+              path7 = binding.path;
               for (const violationPath of binding.constantViolations) {
-                if (this.getAttachmentParentForPath(violationPath).key > path6.key) {
-                  path6 = violationPath;
+                if (this.getAttachmentParentForPath(violationPath).key > path7.key) {
+                  path7 = violationPath;
                 }
               }
             }
           }
         }
-        return path6;
+        return path7;
       }
       _getAttachmentPath() {
         const scopes = this.scopes;
@@ -58982,13 +58982,13 @@ var require_hoister = __commonJS({
         const scope = this.scopes.pop();
         if (scope) return this.getAttachmentParentForPath(scope.path);
       }
-      getAttachmentParentForPath(path6) {
+      getAttachmentParentForPath(path7) {
         do {
-          if (!path6.parentPath || Array.isArray(path6.container) && path6.isStatement()) {
-            return path6;
+          if (!path7.parentPath || Array.isArray(path7.container) && path7.isStatement()) {
+            return path7;
           }
-        } while (path6 = path6.parentPath);
-        return path6;
+        } while (path7 = path7.parentPath);
+        return path7;
       }
       hasOwnParamBindings(scope) {
         for (const name of Object.keys(this.bindings)) {
@@ -59090,18 +59090,18 @@ var require_modification = __commonJS({
       for (let i = 0; i < nodes.length; i++) {
         var _this$context;
         const to = from + i;
-        const path6 = this.getSibling(to);
-        paths.push(path6);
+        const path7 = this.getSibling(to);
+        paths.push(path7);
         if ((_this$context = this.context) != null && _this$context.queue) {
-          _context.pushContext.call(path6, this.context);
+          _context.pushContext.call(path7, this.context);
         }
       }
       const contexts = _context._getQueueContexts.call(this);
-      for (const path6 of paths) {
-        _context.setScope.call(path6);
-        path6.debug("Inserted.");
+      for (const path7 of paths) {
+        _context.setScope.call(path7);
+        path7.debug("Inserted.");
         for (const context3 of contexts) {
-          context3.maybeQueue(path6, true);
+          context3.maybeQueue(path7, true);
         }
       }
       return paths;
@@ -59113,8 +59113,8 @@ var require_modification = __commonJS({
       return _containerInsert.call(this, this.key + 1, nodes);
     }
     var last = (arr) => arr[arr.length - 1];
-    function isHiddenInSequenceExpression(path6) {
-      return isSequenceExpression(path6.parent) && (last(path6.parent.expressions) !== path6.node || isHiddenInSequenceExpression(path6.parentPath));
+    function isHiddenInSequenceExpression(path7) {
+      return isSequenceExpression(path7.parent) && (last(path7.parent.expressions) !== path7.node || isHiddenInSequenceExpression(path7.parentPath));
     }
     function isAlmostConstantAssignment(node, scope) {
       if (!isAssignmentExpression(node) || !isIdentifier2(node.left)) {
@@ -59188,9 +59188,9 @@ var require_modification = __commonJS({
       if (!this.parent) return;
       const paths = (0, _cache.getCachedPaths)(this);
       if (!paths) return;
-      for (const [, path6] of paths) {
-        if (typeof path6.key === "number" && path6.container === this.container && path6.key >= fromIndex) {
-          path6.key += incrementBy;
+      for (const [, path7] of paths) {
+        if (typeof path7.key === "number" && path7.container === this.container && path7.key >= fromIndex) {
+          path7.key += incrementBy;
         }
       }
     }
@@ -59224,27 +59224,27 @@ var require_modification = __commonJS({
       _removal._assertUnremoved.call(this);
       const verifiedNodes = _verifyNodeList.call(this, nodes);
       const container = this.node[listKey];
-      const path6 = _index.default.get({
+      const path7 = _index.default.get({
         parentPath: this,
         parent: this.node,
         container,
         listKey,
         key: 0
       }).setContext(this.context);
-      return _containerInsertBefore.call(path6, verifiedNodes);
+      return _containerInsertBefore.call(path7, verifiedNodes);
     }
     function pushContainer(listKey, nodes) {
       _removal._assertUnremoved.call(this);
       const verifiedNodes = _verifyNodeList.call(this, nodes);
       const container = this.node[listKey];
-      const path6 = _index.default.get({
+      const path7 = _index.default.get({
         parentPath: this,
         parent: this.node,
         container,
         listKey,
         key: container.length
       }).setContext(this.context);
-      return path6.replaceWithMultiple(verifiedNodes);
+      return path7.replaceWithMultiple(verifiedNodes);
     }
     exports2.hoist = function hoist(scope = this.scope) {
       const hoister = new _hoister.default(this, scope);
@@ -59290,14 +59290,14 @@ var require_replacement = __commonJS({
       inheritLeadingComments,
       inheritTrailingComments,
       inheritsComments,
-      isBlockStatement,
+      isBlockStatement: isBlockStatement2,
       isEmptyStatement,
       isExpression,
-      isExpressionStatement,
+      isExpressionStatement: isExpressionStatement2,
       isIfStatement,
       isProgram,
       isStatement,
-      isVariableDeclaration,
+      isVariableDeclaration: isVariableDeclaration2,
       removeComments,
       returnStatement,
       sequenceExpression,
@@ -59422,9 +59422,9 @@ var require_replacement = __commonJS({
         id
       }));
       const completionRecords = callee.getCompletionRecords();
-      for (const path6 of completionRecords) {
-        if (!path6.isExpressionStatement()) continue;
-        const loop = path6.findParent((path7) => path7.isLoop());
+      for (const path7 of completionRecords) {
+        if (!path7.isExpressionStatement()) continue;
+        const loop = path7.findParent((path8) => path8.isLoop());
         if (loop) {
           let uid = loop.getData("expressionReplacementReturnUid");
           if (!uid) {
@@ -59434,9 +59434,9 @@ var require_replacement = __commonJS({
           } else {
             uid = identifier(uid.name);
           }
-          path6.get("expression").replaceWith(assignmentExpression("=", cloneNode(uid), path6.node.expression));
+          path7.get("expression").replaceWith(assignmentExpression("=", cloneNode(uid), path7.node.expression));
         } else {
-          path6.replaceWith(returnStatement(path6.node.expression));
+          path7.replaceWith(returnStatement(path7.node.expression));
         }
       }
       callee.arrowFunctionToExpression();
@@ -59464,9 +59464,9 @@ var require_replacement = __commonJS({
         }
         if (isExpression(node)) {
           exprs.push(node);
-        } else if (isExpressionStatement(node)) {
+        } else if (isExpressionStatement2(node)) {
           exprs.push(node.expression);
-        } else if (isVariableDeclaration(node)) {
+        } else if (isVariableDeclaration2(node)) {
           if (node.kind !== "var") return;
           for (const declar of node.declarations) {
             const bindings = getBindingIdentifiers(declar);
@@ -59483,7 +59483,7 @@ var require_replacement = __commonJS({
           const alternate = node.alternate ? gatherSequenceExpressions([node.alternate], declars) : buildUndefinedNode();
           if (!consequent || !alternate) return;
           exprs.push(conditionalExpression(node.test, consequent, alternate));
-        } else if (isBlockStatement(node)) {
+        } else if (isBlockStatement2(node)) {
           const body = gatherSequenceExpressions(node.body, declars);
           if (!body) return;
           exprs.push(body);
@@ -59545,16 +59545,16 @@ var require_evaluation = __commonJS({
       const res = this.evaluate();
       if (res.confident) return !!res.value;
     }
-    function deopt(path6, state) {
+    function deopt(path7, state) {
       if (!state.confident) return;
-      state.deoptPath = path6;
+      state.deoptPath = path7;
       state.confident = false;
     }
     var Globals = /* @__PURE__ */ new Map([["undefined", void 0], ["Infinity", Infinity], ["NaN", NaN]]);
-    function evaluateCached(path6, state) {
+    function evaluateCached(path7, state) {
       const {
         node
-      } = path6;
+      } = path7;
       const {
         seen
       } = state;
@@ -59563,7 +59563,7 @@ var require_evaluation = __commonJS({
         if (existing.resolved) {
           return existing.value;
         } else {
-          deopt(path6, state);
+          deopt(path7, state);
           return;
         }
       } else {
@@ -59571,7 +59571,7 @@ var require_evaluation = __commonJS({
           resolved: false
         };
         seen.set(node, item);
-        const val = _evaluate(path6, state);
+        const val = _evaluate(path7, state);
         if (state.confident) {
           item.resolved = true;
           item.value = val;
@@ -59579,55 +59579,55 @@ var require_evaluation = __commonJS({
         return val;
       }
     }
-    function _evaluate(path6, state) {
+    function _evaluate(path7, state) {
       if (!state.confident) return;
-      if (path6.isSequenceExpression()) {
-        const exprs = path6.get("expressions");
+      if (path7.isSequenceExpression()) {
+        const exprs = path7.get("expressions");
         return evaluateCached(exprs[exprs.length - 1], state);
       }
-      if (path6.isStringLiteral() || path6.isNumericLiteral() || path6.isBooleanLiteral()) {
-        return path6.node.value;
+      if (path7.isStringLiteral() || path7.isNumericLiteral() || path7.isBooleanLiteral()) {
+        return path7.node.value;
       }
-      if (path6.isNullLiteral()) {
+      if (path7.isNullLiteral()) {
         return null;
       }
-      if (path6.isTemplateLiteral()) {
-        return evaluateQuasis(path6, path6.node.quasis, state);
+      if (path7.isTemplateLiteral()) {
+        return evaluateQuasis(path7, path7.node.quasis, state);
       }
-      if (path6.isTaggedTemplateExpression() && path6.get("tag").isMemberExpression()) {
-        const object = path6.get("tag.object");
+      if (path7.isTaggedTemplateExpression() && path7.get("tag").isMemberExpression()) {
+        const object = path7.get("tag.object");
         const {
           node: {
             name
           }
         } = object;
-        const property = path6.get("tag.property");
-        if (object.isIdentifier() && name === "String" && !path6.scope.getBinding(name) && property.isIdentifier() && property.node.name === "raw") {
-          return evaluateQuasis(path6, path6.node.quasi.quasis, state, true);
+        const property = path7.get("tag.property");
+        if (object.isIdentifier() && name === "String" && !path7.scope.getBinding(name) && property.isIdentifier() && property.node.name === "raw") {
+          return evaluateQuasis(path7, path7.node.quasi.quasis, state, true);
         }
       }
-      if (path6.isConditionalExpression()) {
-        const testResult = evaluateCached(path6.get("test"), state);
+      if (path7.isConditionalExpression()) {
+        const testResult = evaluateCached(path7.get("test"), state);
         if (!state.confident) return;
         if (testResult) {
-          return evaluateCached(path6.get("consequent"), state);
+          return evaluateCached(path7.get("consequent"), state);
         } else {
-          return evaluateCached(path6.get("alternate"), state);
+          return evaluateCached(path7.get("alternate"), state);
         }
       }
-      if (path6.isExpressionWrapper()) {
-        return evaluateCached(path6.get("expression"), state);
+      if (path7.isExpressionWrapper()) {
+        return evaluateCached(path7.get("expression"), state);
       }
-      if (path6.isMemberExpression() && !path6.parentPath.isCallExpression({
-        callee: path6.node
+      if (path7.isMemberExpression() && !path7.parentPath.isCallExpression({
+        callee: path7.node
       })) {
-        const property = path6.get("property");
-        const object = path6.get("object");
+        const property = path7.get("property");
+        const object = path7.get("object");
         if (object.isLiteral()) {
           const value = object.node.value;
           const type = typeof value;
           let key = null;
-          if (path6.node.computed) {
+          if (path7.node.computed) {
             key = evaluateCached(property, state);
             if (!state.confident) return;
           } else if (property.isIdentifier()) {
@@ -59638,10 +59638,10 @@ var require_evaluation = __commonJS({
           }
         }
       }
-      if (path6.isReferencedIdentifier()) {
-        const binding = path6.scope.getBinding(path6.node.name);
+      if (path7.isReferencedIdentifier()) {
+        const binding = path7.scope.getBinding(path7.node.name);
         if (binding) {
-          if (binding.constantViolations.length > 0 || path6.node.start < binding.path.node.end) {
+          if (binding.constantViolations.length > 0 || path7.node.start < binding.path.node.end) {
             deopt(binding.path, state);
             return;
           }
@@ -59650,7 +59650,7 @@ var require_evaluation = __commonJS({
             let hasUnsafeBlock = !bindingPathScope.path.parentPath.isBlockStatement();
             for (let scope = bindingPathScope.parent; scope; scope = scope.parent) {
               var _scope$path$parentPat;
-              if (scope === path6.scope) {
+              if (scope === path7.scope) {
                 if (hasUnsafeBlock) {
                   deopt(binding.path, state);
                   return;
@@ -59666,7 +59666,7 @@ var require_evaluation = __commonJS({
             return binding.value;
           }
         }
-        const name = path6.node.name;
+        const name = path7.node.name;
         if (Globals.has(name)) {
           if (!binding) {
             return Globals.get(name);
@@ -59675,7 +59675,7 @@ var require_evaluation = __commonJS({
           return;
         }
         if (!binding) {
-          deopt(path6, state);
+          deopt(path7, state);
           return;
         }
         const bindingPath = binding.path;
@@ -59691,19 +59691,19 @@ var require_evaluation = __commonJS({
         }
         return value;
       }
-      if (path6.isUnaryExpression({
+      if (path7.isUnaryExpression({
         prefix: true
       })) {
-        if (path6.node.operator === "void") {
+        if (path7.node.operator === "void") {
           return void 0;
         }
-        const argument = path6.get("argument");
-        if (path6.node.operator === "typeof" && (argument.isFunction() || argument.isClass())) {
+        const argument = path7.get("argument");
+        if (path7.node.operator === "typeof" && (argument.isFunction() || argument.isClass())) {
           return "function";
         }
         const arg = evaluateCached(argument, state);
         if (!state.confident) return;
-        switch (path6.node.operator) {
+        switch (path7.node.operator) {
           case "!":
             return !arg;
           case "+":
@@ -59716,9 +59716,9 @@ var require_evaluation = __commonJS({
             return typeof arg;
         }
       }
-      if (path6.isArrayExpression()) {
+      if (path7.isArrayExpression()) {
         const arr = [];
-        const elems = path6.get("elements");
+        const elems = path7.get("elements");
         for (const elem of elems) {
           const elemValue = elem.evaluate();
           if (elemValue.confident) {
@@ -59730,9 +59730,9 @@ var require_evaluation = __commonJS({
         }
         return arr;
       }
-      if (path6.isObjectExpression()) {
+      if (path7.isObjectExpression()) {
         const obj = {};
-        const props = path6.get("properties");
+        const props = path7.get("properties");
         for (const prop of props) {
           if (prop.isObjectMethod() || prop.isSpreadElement()) {
             deopt(prop, state);
@@ -59763,14 +59763,14 @@ var require_evaluation = __commonJS({
         }
         return obj;
       }
-      if (path6.isLogicalExpression()) {
+      if (path7.isLogicalExpression()) {
         const wasConfident = state.confident;
-        const left = evaluateCached(path6.get("left"), state);
+        const left = evaluateCached(path7.get("left"), state);
         const leftConfident = state.confident;
         state.confident = wasConfident;
-        const right = evaluateCached(path6.get("right"), state);
+        const right = evaluateCached(path7.get("right"), state);
         const rightConfident = state.confident;
-        switch (path6.node.operator) {
+        switch (path7.node.operator) {
           case "||":
             state.confident = leftConfident && (!!left || rightConfident);
             if (!state.confident) return;
@@ -59785,12 +59785,12 @@ var require_evaluation = __commonJS({
             return left != null ? left : right;
         }
       }
-      if (path6.isBinaryExpression()) {
-        const left = evaluateCached(path6.get("left"), state);
+      if (path7.isBinaryExpression()) {
+        const left = evaluateCached(path7.get("left"), state);
         if (!state.confident) return;
-        const right = evaluateCached(path6.get("right"), state);
+        const right = evaluateCached(path7.get("right"), state);
         if (!state.confident) return;
-        switch (path6.node.operator) {
+        switch (path7.node.operator) {
           case "-":
             return left - right;
           case "+":
@@ -59833,11 +59833,11 @@ var require_evaluation = __commonJS({
             return left >>> right;
         }
       }
-      if (path6.isCallExpression()) {
-        const callee = path6.get("callee");
+      if (path7.isCallExpression()) {
+        const callee = path7.get("callee");
         let context3;
         let func;
-        if (callee.isIdentifier() && !path6.scope.getBinding(callee.node.name) && (isValidObjectCallee(callee.node.name) || isValidIdentifierCallee(callee.node.name))) {
+        if (callee.isIdentifier() && !path7.scope.getBinding(callee.node.name) && (isValidObjectCallee(callee.node.name) || isValidIdentifierCallee(callee.node.name))) {
           func = global[callee.node.name];
         }
         if (callee.isMemberExpression()) {
@@ -59859,17 +59859,17 @@ var require_evaluation = __commonJS({
           }
         }
         if (func) {
-          const args = path6.get("arguments").map((arg) => evaluateCached(arg, state));
+          const args = path7.get("arguments").map((arg) => evaluateCached(arg, state));
           if (!state.confident) return;
           return func.apply(context3, args);
         }
       }
-      deopt(path6, state);
+      deopt(path7, state);
     }
-    function evaluateQuasis(path6, quasis, state, raw = false) {
+    function evaluateQuasis(path7, quasis, state, raw = false) {
       let str = "";
       let i = 0;
-      const exprs = path6.isTemplateLiteral() ? path6.get("expressions") : path6.get("quasi.expressions");
+      const exprs = path7.isTemplateLiteral() ? path7.get("expressions") : path7.get("quasi.expressions");
       for (const elem of quasis) {
         if (!state.confident) break;
         str += raw ? elem.value.raw : elem.value.cooked;
@@ -59949,14 +59949,14 @@ ${str}
         }
       },
       unwrap: ({
-        program: program2
+        program: program3
       }) => {
-        const [stmt] = program2.body;
+        const [stmt] = program3.body;
         assertExpressionStatement(stmt);
         return stmt.expression;
       }
     };
-    var program = exports2.program = {
+    var program2 = exports2.program = {
       code: (str) => str,
       validate: () => {
       },
@@ -60060,7 +60060,7 @@ var require_parse2 = __commonJS({
     var _codeFrame = require_lib7();
     var {
       isCallExpression: isCallExpression2,
-      isExpressionStatement,
+      isExpressionStatement: isExpressionStatement2,
       isFunction,
       isIdentifier: isIdentifier2,
       isJSXIdentifier,
@@ -60139,7 +60139,7 @@ var require_parse2 = __commonJS({
         type = "string";
       } else if (isNewExpression(parent) && key === "arguments" || isCallExpression2(parent) && key === "arguments" || isFunction(parent) && key === "params") {
         type = "param";
-      } else if (isExpressionStatement(parent) && !isPlaceholder(node)) {
+      } else if (isExpressionStatement2(parent) && !isPlaceholder(node)) {
         type = "statement";
         ancestors = ancestors.slice(0, -1);
       } else if (isStatement(node) && isPlaceholder(node)) {
@@ -60537,13 +60537,13 @@ var require_lib8 = __commonJS({
     var statement = exports2.statement = (0, _builder.default)(formatters.statement);
     var statements = exports2.statements = (0, _builder.default)(formatters.statements);
     var expression = exports2.expression = (0, _builder.default)(formatters.expression);
-    var program = exports2.program = (0, _builder.default)(formatters.program);
+    var program2 = exports2.program = (0, _builder.default)(formatters.program);
     var _default = exports2.default = Object.assign(smart.bind(void 0), {
       smart,
       statement,
       statements,
       expression,
-      program,
+      program: program2,
       ast: smart.ast
     });
   }
@@ -60594,8 +60594,8 @@ var require_conversion = __commonJS({
       unaryExpression,
       toBindingIdentifierName,
       isFunction,
-      isAssignmentPattern,
-      isRestElement,
+      isAssignmentPattern: isAssignmentPattern2,
+      isRestElement: isRestElement2,
       getFunctionName,
       cloneNode,
       variableDeclaration,
@@ -60663,8 +60663,8 @@ var require_conversion = __commonJS({
       }
       hoistFunctionEnvironment(this);
     }
-    function setType(path6, type) {
-      path6.node.type = type;
+    function setType(path7, type) {
+      path7.node.type = type;
     }
     function arrowFunctionToExpression({
       allowInsertArrow = true,
@@ -61079,14 +61079,14 @@ var require_conversion = __commonJS({
       return this;
     }
     var refersOuterBindingVisitor = {
-      "ReferencedIdentifier|BindingIdentifier"(path6, state) {
-        if (path6.node.name !== state.name) return;
+      "ReferencedIdentifier|BindingIdentifier"(path7, state) {
+        if (path7.node.name !== state.name) return;
         state.needsRename = true;
-        path6.stop();
+        path7.stop();
       },
-      Scope(path6, state) {
-        if (path6.scope.hasOwnBinding(state.name)) {
-          path6.skip();
+      Scope(path7, state) {
+        if (path7.scope.hasOwnBinding(state.name)) {
+          path7.skip();
         }
       }
     };
@@ -61155,7 +61155,7 @@ var require_conversion = __commonJS({
       return this.replaceWith(call)[0].get("arguments.0");
     }
     function getFunctionArity(node) {
-      const count = node.params.findIndex((param) => isAssignmentPattern(param) || isRestElement(param));
+      const count = node.params.findIndex((param) => isAssignmentPattern2(param) || isRestElement2(param));
       return count === -1 ? node.params.length : count;
     }
   }
@@ -61187,7 +61187,7 @@ var require_introspection = __commonJS({
     var {
       STATEMENT_OR_BLOCK_KEYS,
       VISITOR_KEYS,
-      isBlockStatement,
+      isBlockStatement: isBlockStatement2,
       isExpression,
       isIdentifier: isIdentifier2,
       isLiteral,
@@ -61228,32 +61228,32 @@ var require_introspection = __commonJS({
         return false;
       }
       if (this.isExpression()) {
-        return isBlockStatement(replacement);
+        return isBlockStatement2(replacement);
       } else if (this.isBlockStatement()) {
         return isExpression(replacement);
       }
       return false;
     }
     function isCompletionRecord(allowInsideFunction) {
-      let path6 = this;
+      let path7 = this;
       let first = true;
       do {
         const {
           type,
           container
-        } = path6;
-        if (!first && (path6.isFunction() || type === "StaticBlock")) {
+        } = path7;
+        if (!first && (path7.isFunction() || type === "StaticBlock")) {
           return !!allowInsideFunction;
         }
         first = false;
-        if (Array.isArray(container) && path6.key !== container.length - 1) {
+        if (Array.isArray(container) && path7.key !== container.length - 1) {
           return false;
         }
-      } while ((path6 = path6.parentPath) && !path6.isProgram() && !path6.isDoExpression());
+      } while ((path7 = path7.parentPath) && !path7.isProgram() && !path7.isDoExpression());
       return true;
     }
     function isStatementOrBlock() {
-      if (this.parentPath.isLabeledStatement() || isBlockStatement(this.container)) {
+      if (this.parentPath.isLabeledStatement() || isBlockStatement2(this.container)) {
         return false;
       } else {
         return STATEMENT_OR_BLOCK_KEYS.includes(this.key);
@@ -61271,21 +61271,21 @@ var require_introspection = __commonJS({
       }
       const binding = this.scope.getBinding(this.node.name);
       if ((binding == null ? void 0 : binding.kind) !== "module") return false;
-      const path6 = binding.path;
-      const parent = path6.parentPath;
+      const path7 = binding.path;
+      const parent = path7.parentPath;
       if (!parent.isImportDeclaration()) return false;
       if (parent.node.source.value === moduleSource) {
         if (!importName) return true;
       } else {
         return false;
       }
-      if (path6.isImportDefaultSpecifier() && importName === "default") {
+      if (path7.isImportDefaultSpecifier() && importName === "default") {
         return true;
       }
-      if (path6.isImportNamespaceSpecifier() && importName === "*") {
+      if (path7.isImportNamespaceSpecifier() && importName === "*") {
         return true;
       }
-      if (path6.isImportSpecifier() && isIdentifier2(path6.node.imported, {
+      if (path7.isImportSpecifier() && isIdentifier2(path7.node.imported, {
         name: importName
       })) {
         return true;
@@ -61303,8 +61303,8 @@ var require_introspection = __commonJS({
     function willIMaybeExecuteBefore(target) {
       return this._guessExecutionStatusRelativeTo(target) !== "after";
     }
-    function getOuterFunction(path6) {
-      return path6.isProgram() ? path6 : (path6.parentPath.scope.getFunctionParent() || path6.parentPath.scope.getProgramParent()).path;
+    function getOuterFunction(path7) {
+      return path7.isProgram() ? path7 : (path7.parentPath.scope.getFunctionParent() || path7.parentPath.scope.getProgramParent()).path;
     }
     function isExecutionUncertain(type, key) {
       switch (type) {
@@ -61336,8 +61336,8 @@ var require_introspection = __commonJS({
     }
     function isExecutionUncertainInList(paths, maxIndex) {
       for (let i = 0; i < maxIndex; i++) {
-        const path6 = paths[i];
-        if (isExecutionUncertain(path6.parent.type, path6.parentKey)) {
+        const path7 = paths[i];
+        if (isExecutionUncertain(path7.parent.type, path7.parentKey)) {
           return true;
         }
       }
@@ -61367,10 +61367,10 @@ var require_introspection = __commonJS({
         this: 0
       };
       while (!commonPath && commonIndex.this < paths.this.length) {
-        const path6 = paths.this[commonIndex.this];
-        commonIndex.target = paths.target.indexOf(path6);
+        const path7 = paths.this[commonIndex.this];
+        commonIndex.target = paths.target.indexOf(path7);
         if (commonIndex.target >= 0) {
-          commonPath = path6;
+          commonPath = path7;
         } else {
           commonIndex.this++;
         }
@@ -61408,13 +61408,13 @@ var require_introspection = __commonJS({
       if (!binding.references) return "before";
       const referencePaths = binding.referencePaths;
       let allStatus;
-      for (const path6 of referencePaths) {
-        const childOfFunction = !!path6.find((path7) => path7.node === target.node);
+      for (const path7 of referencePaths) {
+        const childOfFunction = !!path7.find((path8) => path8.node === target.node);
         if (childOfFunction) continue;
-        if (path6.key !== "callee" || !path6.parentPath.isCallExpression()) {
+        if (path7.key !== "callee" || !path7.parentPath.isCallExpression()) {
           return "unknown";
         }
-        const status = _guessExecutionStatusRelativeToCached(base, path6, cache);
+        const status = _guessExecutionStatusRelativeToCached(base, path7, cache);
         if (allStatus && allStatus !== status) {
           return "unknown";
         } else {
@@ -61532,19 +61532,19 @@ var require_introspection = __commonJS({
     }
     function isInStrictMode() {
       const start = this.isProgram() ? this : this.parentPath;
-      const strictParent = start.find((path6) => {
-        if (path6.isProgram({
+      const strictParent = start.find((path7) => {
+        if (path7.isProgram({
           sourceType: "module"
         })) return true;
-        if (path6.isClass()) return true;
-        if (path6.isArrowFunctionExpression() && !path6.get("body").isBlockStatement()) {
+        if (path7.isClass()) return true;
+        if (path7.isArrowFunctionExpression() && !path7.get("body").isBlockStatement()) {
           return false;
         }
         let body;
-        if (path6.isFunction()) {
-          body = path6.node.body;
-        } else if (path6.isProgram()) {
-          body = path6.node;
+        if (path7.isFunction()) {
+          body = path7.node.body;
+        } else if (path7.isProgram()) {
+          body = path7.node;
         } else {
           return false;
         }
@@ -61593,16 +61593,16 @@ var require_family = __commonJS({
     } = _t;
     var NORMAL_COMPLETION = 0;
     var BREAK_COMPLETION = 1;
-    function NormalCompletion(path6) {
+    function NormalCompletion(path7) {
       return {
         type: NORMAL_COMPLETION,
-        path: path6
+        path: path7
       };
     }
-    function BreakCompletion(path6) {
+    function BreakCompletion(path7) {
       return {
         type: BREAK_COMPLETION,
-        path: path6
+        path: path7
       };
     }
     function getOpposite() {
@@ -61613,9 +61613,9 @@ var require_family = __commonJS({
       }
       return null;
     }
-    function addCompletionRecords(path6, records, context3) {
-      if (path6) {
-        records.push(..._getCompletionRecords(path6, context3));
+    function addCompletionRecords(path7, records, context3) {
+      if (path7) {
+        records.push(..._getCompletionRecords(path7, context3));
       }
       return records;
     }
@@ -61665,16 +61665,16 @@ var require_family = __commonJS({
       if (context3.canHaveBreak) {
         let lastNormalCompletions = [];
         for (let i = 0; i < paths.length; i++) {
-          const path6 = paths[i];
+          const path7 = paths[i];
           const newContext = Object.assign({}, context3, {
             inCaseClause: false
           });
-          if (path6.isBlockStatement() && (context3.inCaseClause || context3.shouldPopulateBreak)) {
+          if (path7.isBlockStatement() && (context3.inCaseClause || context3.shouldPopulateBreak)) {
             newContext.shouldPopulateBreak = true;
           } else {
             newContext.shouldPopulateBreak = false;
           }
-          const statementCompletions = _getCompletionRecords(path6, newContext);
+          const statementCompletions = _getCompletionRecords(path7, newContext);
           if (statementCompletions.length > 0 && statementCompletions.every((c) => c.type === BREAK_COMPLETION)) {
             if (lastNormalCompletions.length > 0 && statementCompletions.every((c) => c.path.isBreakStatement({
               label: null
@@ -61724,35 +61724,35 @@ var require_family = __commonJS({
       }
       return completions;
     }
-    function _getCompletionRecords(path6, context3) {
+    function _getCompletionRecords(path7, context3) {
       let records = [];
-      if (path6.isIfStatement()) {
-        records = addCompletionRecords(path6.get("consequent"), records, context3);
-        records = addCompletionRecords(path6.get("alternate"), records, context3);
-      } else if (path6.isDoExpression() || path6.isFor() || path6.isWhile() || path6.isLabeledStatement()) {
-        return addCompletionRecords(path6.get("body"), records, context3);
-      } else if (path6.isProgram() || path6.isBlockStatement()) {
-        return getStatementListCompletion(path6.get("body"), context3);
-      } else if (path6.isFunction()) {
-        return _getCompletionRecords(path6.get("body"), context3);
-      } else if (path6.isTryStatement()) {
-        records = addCompletionRecords(path6.get("block"), records, context3);
-        records = addCompletionRecords(path6.get("handler"), records, context3);
-      } else if (path6.isCatchClause()) {
-        return addCompletionRecords(path6.get("body"), records, context3);
-      } else if (path6.isSwitchStatement()) {
-        return completionRecordForSwitch(path6.get("cases"), records, context3);
-      } else if (path6.isSwitchCase()) {
-        return getStatementListCompletion(path6.get("consequent"), {
+      if (path7.isIfStatement()) {
+        records = addCompletionRecords(path7.get("consequent"), records, context3);
+        records = addCompletionRecords(path7.get("alternate"), records, context3);
+      } else if (path7.isDoExpression() || path7.isFor() || path7.isWhile() || path7.isLabeledStatement()) {
+        return addCompletionRecords(path7.get("body"), records, context3);
+      } else if (path7.isProgram() || path7.isBlockStatement()) {
+        return getStatementListCompletion(path7.get("body"), context3);
+      } else if (path7.isFunction()) {
+        return _getCompletionRecords(path7.get("body"), context3);
+      } else if (path7.isTryStatement()) {
+        records = addCompletionRecords(path7.get("block"), records, context3);
+        records = addCompletionRecords(path7.get("handler"), records, context3);
+      } else if (path7.isCatchClause()) {
+        return addCompletionRecords(path7.get("body"), records, context3);
+      } else if (path7.isSwitchStatement()) {
+        return completionRecordForSwitch(path7.get("cases"), records, context3);
+      } else if (path7.isSwitchCase()) {
+        return getStatementListCompletion(path7.get("consequent"), {
           canHaveBreak: true,
           shouldPopulateBreak: false,
           inCaseClause: true,
           shouldPreserveBreak: context3.shouldPreserveBreak
         });
-      } else if (path6.isBreakStatement()) {
-        records.push(BreakCompletion(path6));
+      } else if (path7.isBreakStatement()) {
+        records.push(BreakCompletion(path7));
       } else {
-        records.push(NormalCompletion(path6));
+        records.push(NormalCompletion(path7));
       }
       return records;
     }
@@ -61832,19 +61832,19 @@ var require_family = __commonJS({
       }
     }
     function _getPattern(parts, context3) {
-      let path6 = this;
+      let path7 = this;
       for (const part of parts) {
         if (part === ".") {
-          path6 = path6.parentPath;
+          path7 = path7.parentPath;
         } else {
-          if (Array.isArray(path6)) {
-            path6 = path6[part];
+          if (Array.isArray(path7)) {
+            path7 = path7[part];
           } else {
-            path6 = path6.get(part, context3);
+            path7 = path7.get(part, context3);
           }
         }
       }
-      return path6;
+      return path7;
     }
     function getAssignmentIdentifiers() {
       return _getAssignmentIdentifiers(this.node);
@@ -61856,8 +61856,8 @@ var require_family = __commonJS({
       return _getOuterBindingIdentifiers(this.node, duplicates);
     }
     function getBindingIdentifierPaths(duplicates = false, outerOnly = false) {
-      const path6 = this;
-      const search = [path6];
+      const path7 = this;
+      const search = [path7];
       const ids = /* @__PURE__ */ Object.create(null);
       while (search.length) {
         const id = search.shift();
@@ -62056,13 +62056,13 @@ var require_path = __commonJS({
         }
         const targetNode = container[key];
         const paths = cache.getOrCreateCachedPaths(parent, parentPath);
-        let path6 = paths.get(targetNode);
-        if (!path6) {
-          path6 = new NodePath(hub, parent);
-          if (targetNode) paths.set(targetNode, path6);
+        let path7 = paths.get(targetNode);
+        if (!path7) {
+          path7 = new NodePath(hub, parent);
+          if (targetNode) paths.set(targetNode, path7);
         }
-        _context.setup.call(path6, parentPath, container, listKey, key);
-        return path6;
+        _context.setup.call(path7, parentPath, container, listKey, key);
+        return path7;
       }
       getScope(scope) {
         return this.isScope() ? new _index2.default(this) : scope;
@@ -62096,12 +62096,12 @@ var require_path = __commonJS({
       }
       getPathLocation() {
         const parts = [];
-        let path6 = this;
+        let path7 = this;
         do {
-          let key = path6.key;
-          if (path6.inList) key = `${path6.listKey}[${key}]`;
+          let key = path7.key;
+          if (path7.inList) key = `${path7.listKey}[${key}]`;
           parts.unshift(key);
-        } while (path6 = path6.parentPath);
+        } while (path7 = path7.parentPath);
         return parts.join(".");
       }
       debug(message) {
@@ -62333,12 +62333,12 @@ var require_context = __commonJS({
           hub
         });
       }
-      maybeQueue(path6, notPriority) {
+      maybeQueue(path7, notPriority) {
         if (this.queue) {
           if (notPriority) {
-            this.queue.push(path6);
+            this.queue.push(path7);
           } else {
-            this.priorityQueue.push(path6);
+            this.priorityQueue.push(path7);
           }
         }
       }
@@ -62367,19 +62367,19 @@ var require_context = __commonJS({
         let stop = false;
         let visitIndex = 0;
         for (; visitIndex < queue.length; ) {
-          const path6 = queue[visitIndex];
+          const path7 = queue[visitIndex];
           visitIndex++;
-          _context.resync.call(path6);
-          if (path6.contexts.length === 0 || path6.contexts[path6.contexts.length - 1] !== this) {
-            _context.pushContext.call(path6, this);
+          _context.resync.call(path7);
+          if (path7.contexts.length === 0 || path7.contexts[path7.contexts.length - 1] !== this) {
+            _context.pushContext.call(path7, this);
           }
-          if (path6.key === null) continue;
+          if (path7.key === null) continue;
           const {
             node
-          } = path6;
+          } = path7;
           if (visited.has(node)) continue;
           if (node) visited.add(node);
-          if (path6.visit()) {
+          if (path7.visit()) {
             stop = true;
             break;
           }
@@ -62425,13 +62425,13 @@ var require_traverse_node = __commonJS({
     var {
       VISITOR_KEYS
     } = _t;
-    function traverseNode(node, opts, scope, state, path6, skipKeys, visitSelf) {
+    function traverseNode(node, opts, scope, state, path7, skipKeys, visitSelf) {
       const keys = VISITOR_KEYS[node.type];
       if (!keys) return false;
-      const context3 = new _context.default(scope, opts, state, path6);
+      const context3 = new _context.default(scope, opts, state, path7);
       if (visitSelf) {
-        if (skipKeys != null && skipKeys[path6.parentKey]) return false;
-        return context3.visitQueue([path6]);
+        if (skipKeys != null && skipKeys[path7.parentKey]) return false;
+        return context3.visitQueue([path7]);
       }
       for (const key of keys) {
         if (skipKeys != null && skipKeys[key]) continue;
@@ -62513,11 +62513,11 @@ var require_context2 = __commonJS({
       return denylist == null ? void 0 : denylist.includes(this.node.type);
     }
     exports2.isBlacklisted = isDenylisted;
-    function restoreContext(path6, context3) {
-      if (path6.context !== context3) {
-        path6.context = context3;
-        path6.state = context3.state;
-        path6.opts = context3.opts;
+    function restoreContext(path7, context3) {
+      if (path7.context !== context3) {
+        path7.context = context3;
+        path7.state = context3.state;
+        path7.opts = context3.opts;
       }
     }
     function visit() {
@@ -62557,14 +62557,14 @@ var require_context2 = __commonJS({
     }
     function _forceSetScope() {
       var _this$scope;
-      let path6 = this.parentPath;
-      if ((this.key === "key" || this.listKey === "decorators") && path6.isMethod() || this.key === "discriminant" && path6.isSwitchStatement()) {
-        path6 = path6.parentPath;
+      let path7 = this.parentPath;
+      if ((this.key === "key" || this.listKey === "decorators") && path7.isMethod() || this.key === "discriminant" && path7.isSwitchStatement()) {
+        path7 = path7.parentPath;
       }
       let target;
-      while (path6 && !target) {
-        target = path6.scope;
-        path6 = path6.parentPath;
+      while (path7 && !target) {
+        target = path7.scope;
+        path7 = path7.parentPath;
       }
       this.scope = this.getScope(target);
       (_this$scope = this.scope) == null || _this$scope.init();
@@ -62572,16 +62572,16 @@ var require_context2 = __commonJS({
     function setScope() {
       var _this$opts2, _this$scope2;
       if ((_this$opts2 = this.opts) != null && _this$opts2.noScope) return;
-      let path6 = this.parentPath;
-      if ((this.key === "key" || this.listKey === "decorators") && path6.isMethod() || this.key === "discriminant" && path6.isSwitchStatement()) {
-        path6 = path6.parentPath;
+      let path7 = this.parentPath;
+      if ((this.key === "key" || this.listKey === "decorators") && path7.isMethod() || this.key === "discriminant" && path7.isSwitchStatement()) {
+        path7 = path7.parentPath;
       }
       let target;
-      while (path6 && !target) {
+      while (path7 && !target) {
         var _path$opts;
-        if ((_path$opts = path6.opts) != null && _path$opts.noScope) return;
-        target = path6.scope;
-        path6 = path6.parentPath;
+        if ((_path$opts = path7.opts) != null && _path$opts.noScope) return;
+        target = path7.scope;
+        path7 = path7.parentPath;
       }
       this.scope = this.getScope(target);
       (_this$scope2 = this.scope) == null || _this$scope2.init();
@@ -62689,12 +62689,12 @@ var require_context2 = __commonJS({
       }
     }
     function _getQueueContexts() {
-      let path6 = this;
+      let path7 = this;
       let contexts = this.contexts;
       while (!contexts.length) {
-        path6 = path6.parentPath;
-        if (!path6) break;
-        contexts = path6.contexts;
+        path7 = path7.parentPath;
+        if (!path7) break;
+        contexts = path7.contexts;
       }
       return contexts;
     }
@@ -62765,8 +62765,8 @@ var require_lib9 = __commonJS({
       traverseFast(node, enter);
       return;
     };
-    traverse.node = function(node, opts, scope, state, path6, skipKeys) {
-      (0, _traverseNode.traverseNode)(node, opts, scope, state, path6, skipKeys);
+    traverse.node = function(node, opts, scope, state, path7, skipKeys) {
+      (0, _traverseNode.traverseNode)(node, opts, scope, state, path7, skipKeys);
     };
     traverse.clearNode = function(node, opts) {
       removeProperties(node, opts);
@@ -62863,7 +62863,7 @@ var require_path2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.convertPosixPathToPattern = exports2.convertWindowsPathToPattern = exports2.convertPathToPattern = exports2.escapePosixPath = exports2.escapeWindowsPath = exports2.escape = exports2.removeLeadingDotSegment = exports2.makeAbsolute = exports2.unixify = void 0;
     var os2 = require("os");
-    var path6 = require("path");
+    var path7 = require("path");
     var IS_WINDOWS_PLATFORM = os2.platform() === "win32";
     var LEADING_DOT_SEGMENT_CHARACTERS_COUNT = 2;
     var POSIX_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\()|\\(?![!()*+?@[\]{|}]))/g;
@@ -62875,7 +62875,7 @@ var require_path2 = __commonJS({
     }
     exports2.unixify = unixify;
     function makeAbsolute(cwd, filepath) {
-      return path6.resolve(cwd, filepath);
+      return path7.resolve(cwd, filepath);
     }
     exports2.makeAbsolute = makeAbsolute;
     function removeLeadingDotSegment(entry) {
@@ -64174,7 +64174,7 @@ var require_braces = __commonJS({
 var require_constants8 = __commonJS({
   "node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -64348,7 +64348,7 @@ var require_constants8 = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path6.sep,
+      SEP: path7.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -64375,7 +64375,7 @@ var require_constants8 = __commonJS({
 var require_utils4 = __commonJS({
   "node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -64404,7 +64404,7 @@ var require_utils4 = __commonJS({
       if (options && typeof options.windows === "boolean") {
         return options.windows;
       }
-      return win32 === true || path6.sep === "\\";
+      return win32 === true || path7.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -65768,7 +65768,7 @@ var require_parse4 = __commonJS({
 var require_picomatch = __commonJS({
   "node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path6 = require("path");
+    var path7 = require("path");
     var scan = require_scan();
     var parse4 = require_parse4();
     var utils = require_utils4();
@@ -65853,7 +65853,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options, posix = utils.isWindows(options)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
-      return regex.test(path6.basename(input));
+      return regex.test(path7.basename(input));
     };
     picomatch.isMatch = (str, patterns, options) => picomatch(patterns, options)(str);
     picomatch.parse = (pattern, options) => {
@@ -66080,7 +66080,7 @@ var require_pattern = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isAbsolute = exports2.partitionAbsoluteAndRelative = exports2.removeDuplicateSlashes = exports2.matchAny = exports2.convertPatternsToRe = exports2.makeRe = exports2.getPatternParts = exports2.expandBraceExpansion = exports2.expandPatternsWithBraceExpansion = exports2.isAffectDepthOfReadingPattern = exports2.endsWithSlashGlobStar = exports2.hasGlobStar = exports2.getBaseDirectory = exports2.isPatternRelatedToParentDirectory = exports2.getPatternsOutsideCurrentDirectory = exports2.getPatternsInsideCurrentDirectory = exports2.getPositivePatterns = exports2.getNegativePatterns = exports2.isPositivePattern = exports2.isNegativePattern = exports2.convertToNegativePattern = exports2.convertToPositivePattern = exports2.isDynamicPattern = exports2.isStaticPattern = void 0;
-    var path6 = require("path");
+    var path7 = require("path");
     var globParent = require_glob_parent();
     var micromatch = require_micromatch();
     var GLOBSTAR = "**";
@@ -66175,7 +66175,7 @@ var require_pattern = __commonJS({
     }
     exports2.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename = path6.basename(pattern);
+      const basename = path7.basename(pattern);
       return endsWithSlashGlobStar(pattern) || isStaticPattern(basename);
     }
     exports2.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
@@ -66233,7 +66233,7 @@ var require_pattern = __commonJS({
     }
     exports2.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
     function isAbsolute(pattern) {
-      return path6.isAbsolute(pattern);
+      return path7.isAbsolute(pattern);
     }
     exports2.isAbsolute = isAbsolute;
   }
@@ -66408,10 +66408,10 @@ var require_utils5 = __commonJS({
     exports2.array = array;
     var errno = require_errno();
     exports2.errno = errno;
-    var fs5 = require_fs();
-    exports2.fs = fs5;
-    var path6 = require_path2();
-    exports2.path = path6;
+    var fs6 = require_fs();
+    exports2.fs = fs6;
+    var path7 = require_path2();
+    exports2.path = path7;
     var pattern = require_pattern();
     exports2.pattern = pattern;
     var stream = require_stream();
@@ -66523,8 +66523,8 @@ var require_async = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.read = void 0;
-    function read(path6, settings, callback) {
-      settings.fs.lstat(path6, (lstatError, lstat) => {
+    function read(path7, settings, callback) {
+      settings.fs.lstat(path7, (lstatError, lstat) => {
         if (lstatError !== null) {
           callFailureCallback(callback, lstatError);
           return;
@@ -66533,7 +66533,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path6, (statError, stat) => {
+        settings.fs.stat(path7, (statError, stat) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -66565,13 +66565,13 @@ var require_sync = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.read = void 0;
-    function read(path6, settings) {
-      const lstat = settings.fs.lstatSync(path6);
+    function read(path7, settings) {
+      const lstat = settings.fs.lstatSync(path7);
       if (!lstat.isSymbolicLink() || !settings.followSymbolicLink) {
         return lstat;
       }
       try {
-        const stat = settings.fs.statSync(path6);
+        const stat = settings.fs.statSync(path7);
         if (settings.markSymbolicLink) {
           stat.isSymbolicLink = () => true;
         }
@@ -66593,12 +66593,12 @@ var require_fs2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs5.lstat,
-      stat: fs5.stat,
-      lstatSync: fs5.lstatSync,
-      statSync: fs5.statSync
+      lstat: fs6.lstat,
+      stat: fs6.stat,
+      lstatSync: fs6.lstatSync,
+      statSync: fs6.statSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -66615,12 +66615,12 @@ var require_settings = __commonJS({
   "node_modules/@nodelib/fs.stat/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var fs5 = require_fs2();
+    var fs6 = require_fs2();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLink = this._getValue(this._options.followSymbolicLink, true);
-        this.fs = fs5.createFileSystemAdapter(this._options.fs);
+        this.fs = fs6.createFileSystemAdapter(this._options.fs);
         this.markSymbolicLink = this._getValue(this._options.markSymbolicLink, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
       }
@@ -66642,17 +66642,17 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports2.Settings = settings_1.default;
-    function stat(path6, optionsOrSettingsOrCallback, callback) {
+    function stat(path7, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path6, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path7, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path6, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path7, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports2.stat = stat;
-    function statSync(path6, optionsOrSettings) {
+    function statSync(path7, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path6, settings);
+      return sync.read(path7, settings);
     }
     exports2.statSync = statSync;
     function getSettings(settingsOrOptions = {}) {
@@ -66777,8 +66777,8 @@ var require_utils6 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.fs = void 0;
-    var fs5 = require_fs3();
-    exports2.fs = fs5;
+    var fs6 = require_fs3();
+    exports2.fs = fs6;
   }
 });
 
@@ -66870,16 +66870,16 @@ var require_async2 = __commonJS({
           return;
         }
         const tasks = names.map((name) => {
-          const path6 = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
+          const path7 = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
           return (done) => {
-            fsStat.stat(path6, settings.fsStatSettings, (error, stats) => {
+            fsStat.stat(path7, settings.fsStatSettings, (error, stats) => {
               if (error !== null) {
                 done(error);
                 return;
               }
               const entry = {
                 name,
-                path: path6,
+                path: path7,
                 dirent: utils.fs.createDirentFromStats(name, stats)
               };
               if (settings.stats) {
@@ -66973,14 +66973,14 @@ var require_fs4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.createFileSystemAdapter = exports2.FILE_SYSTEM_ADAPTER = void 0;
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     exports2.FILE_SYSTEM_ADAPTER = {
-      lstat: fs5.lstat,
-      stat: fs5.stat,
-      lstatSync: fs5.lstatSync,
-      statSync: fs5.statSync,
-      readdir: fs5.readdir,
-      readdirSync: fs5.readdirSync
+      lstat: fs6.lstat,
+      stat: fs6.stat,
+      lstatSync: fs6.lstatSync,
+      statSync: fs6.statSync,
+      readdir: fs6.readdir,
+      readdirSync: fs6.readdirSync
     };
     function createFileSystemAdapter(fsMethods) {
       if (fsMethods === void 0) {
@@ -66997,15 +66997,15 @@ var require_settings2 = __commonJS({
   "node_modules/@nodelib/fs.scandir/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path6 = require("path");
+    var path7 = require("path");
     var fsStat = require_out();
-    var fs5 = require_fs4();
+    var fs6 = require_fs4();
     var Settings = class {
       constructor(_options = {}) {
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
-        this.fs = fs5.createFileSystemAdapter(this._options.fs);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path6.sep);
+        this.fs = fs6.createFileSystemAdapter(this._options.fs);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path7.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
         this.fsStatSettings = new fsStat.Settings({
@@ -67032,17 +67032,17 @@ var require_out2 = __commonJS({
     var sync = require_sync2();
     var settings_1 = require_settings2();
     exports2.Settings = settings_1.default;
-    function scandir(path6, optionsOrSettingsOrCallback, callback) {
+    function scandir(path7, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path6, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path7, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path6, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path7, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports2.scandir = scandir;
-    function scandirSync(path6, optionsOrSettings) {
+    function scandirSync(path7, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path6, settings);
+      return sync.read(path7, settings);
     }
     exports2.scandirSync = scandirSync;
     function getSettings(settingsOrOptions = {}) {
@@ -67689,7 +67689,7 @@ var require_settings3 = __commonJS({
   "node_modules/@nodelib/fs.walk/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path6 = require("path");
+    var path7 = require("path");
     var fsScandir = require_out2();
     var Settings = class {
       constructor(_options = {}) {
@@ -67699,7 +67699,7 @@ var require_settings3 = __commonJS({
         this.deepFilter = this._getValue(this._options.deepFilter, null);
         this.entryFilter = this._getValue(this._options.entryFilter, null);
         this.errorFilter = this._getValue(this._options.errorFilter, null);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path6.sep);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path7.sep);
         this.fsScandirSettings = new fsScandir.Settings({
           followSymbolicLinks: this._options.followSymbolicLinks,
           fs: this._options.fs,
@@ -67761,7 +67761,7 @@ var require_reader2 = __commonJS({
   "node_modules/fast-glob/out/readers/reader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path6 = require("path");
+    var path7 = require("path");
     var fsStat = require_out();
     var utils = require_utils5();
     var Reader = class {
@@ -67774,7 +67774,7 @@ var require_reader2 = __commonJS({
         });
       }
       _getFullEntryPath(filepath) {
-        return path6.resolve(this._settings.cwd, filepath);
+        return path7.resolve(this._settings.cwd, filepath);
       }
       _makeEntry(stats, pattern) {
         const entry = {
@@ -68190,7 +68190,7 @@ var require_provider = __commonJS({
   "node_modules/fast-glob/out/providers/provider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path6 = require("path");
+    var path7 = require("path");
     var deep_1 = require_deep();
     var entry_1 = require_entry();
     var error_1 = require_error();
@@ -68204,7 +68204,7 @@ var require_provider = __commonJS({
         this.entryTransformer = new entry_2.default(this._settings);
       }
       _getRootDirectory(task) {
-        return path6.resolve(this._settings.cwd, task.base);
+        return path7.resolve(this._settings.cwd, task.base);
       }
       _getReaderOptions(task) {
         const basePath = task.base === "." ? "" : task.base;
@@ -68385,16 +68385,16 @@ var require_settings4 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = void 0;
-    var fs5 = require("fs");
+    var fs6 = require("fs");
     var os2 = require("os");
     var CPU_COUNT = Math.max(os2.cpus().length, 1);
     exports2.DEFAULT_FILE_SYSTEM_ADAPTER = {
-      lstat: fs5.lstat,
-      lstatSync: fs5.lstatSync,
-      stat: fs5.stat,
-      statSync: fs5.statSync,
-      readdir: fs5.readdir,
-      readdirSync: fs5.readdirSync
+      lstat: fs6.lstat,
+      lstatSync: fs6.lstatSync,
+      stat: fs6.stat,
+      statSync: fs6.statSync,
+      readdir: fs6.readdir,
+      readdirSync: fs6.readdirSync
     };
     var Settings = class {
       constructor(_options = {}) {
@@ -68544,7 +68544,7 @@ var require_out4 = __commonJS({
 var import_node_child_process = require("child_process");
 var import_node_fs2 = __toESM(require("fs"), 1);
 var import_node_os = __toESM(require("os"), 1);
-var import_node_path5 = __toESM(require("path"), 1);
+var import_node_path6 = __toESM(require("path"), 1);
 
 // node_modules/@actions/github/lib/context.js
 var import_fs = require("fs");
@@ -68560,8 +68560,8 @@ var Context = class {
       if ((0, import_fs.existsSync)(process.env.GITHUB_EVENT_PATH)) {
         this.payload = JSON.parse((0, import_fs.readFileSync)(process.env.GITHUB_EVENT_PATH, { encoding: "utf8" }));
       } else {
-        const path6 = process.env.GITHUB_EVENT_PATH;
-        process.stdout.write(`GITHUB_EVENT_PATH ${path6} does not exist${import_os.EOL}`);
+        const path7 = process.env.GITHUB_EVENT_PATH;
+        process.stdout.write(`GITHUB_EVENT_PATH ${path7} does not exist${import_os.EOL}`);
       }
     }
     this.eventName = process.env.GITHUB_EVENT_NAME;
@@ -72292,12 +72292,12 @@ function getOctokit(token, options, ...additionalPlugins) {
 }
 
 // src/analyze.ts
-var import_node_path3 = __toESM(require("path"), 1);
+var import_node_path4 = __toESM(require("path"), 1);
 
 // package.json
 var package_default = {
   name: "@mov2day/assertiq",
-  version: "0.1.3",
+  version: "0.2.0",
   description: "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
   type: "module",
   bin: {
@@ -72369,11 +72369,12 @@ var package_default = {
 // src/constants.ts
 var TOOL_VERSION = package_default.version;
 var DIMENSIONS = [
-  { id: "assertion-quality", name: "Assertion Quality", weight: 0.3 },
-  { id: "flakiness-risk", name: "Flakiness Risk", weight: 0.25 },
-  { id: "naming-clarity", name: "Naming Clarity", weight: 0.15 },
-  { id: "coverage-balance", name: "Coverage Balance", weight: 0.2 },
-  { id: "dead-test-risk", name: "Dead Test Risk", weight: 0.1 }
+  { id: "assertion-quality", name: "Assertion Quality", weight: 0.28 },
+  { id: "flakiness-risk", name: "Flakiness Risk", weight: 0.23 },
+  { id: "isolation-risk", name: "Isolation Risk", weight: 0.1 },
+  { id: "naming-clarity", name: "Naming Clarity", weight: 0.13 },
+  { id: "coverage-balance", name: "Coverage Balance", weight: 0.18 },
+  { id: "dead-test-risk", name: "Dead Test Risk", weight: 0.08 }
 ];
 var DEFAULT_IGNORE = [
   "**/node_modules/**",
@@ -72394,16 +72395,82 @@ var GRADE_FLOORS = {
   F: 0
 };
 
+// src/history.ts
+var import_promises = __toESM(require("fs/promises"), 1);
+var import_node_path = __toESM(require("path"), 1);
+var HISTORY_FILE = "assertiq-history.json";
+var HISTORY_LIMIT = 90;
+async function readHistory(root) {
+  const historyPath = import_node_path.default.join(root, HISTORY_FILE);
+  try {
+    const raw = await import_promises.default.readFile(historyPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return { entries: [], warnings: [`${HISTORY_FILE}: expected JSON array, ignoring history file.`] };
+    }
+    const entries = parsed.filter(isHistoryEntry).slice(-HISTORY_LIMIT);
+    if (entries.length !== parsed.length) {
+      return { entries, warnings: [`${HISTORY_FILE}: dropped invalid history entries.`] };
+    }
+    return { entries, warnings: [] };
+  } catch (error) {
+    const nodeError = error;
+    if (nodeError.code === "ENOENT") return { entries: [], warnings: [] };
+    if (nodeError.name === "SyntaxError") {
+      return { entries: [], warnings: [`${HISTORY_FILE}: invalid JSON, ignoring history file.`] };
+    }
+    return { entries: [], warnings: [`${HISTORY_FILE}: ${nodeError.message}`] };
+  }
+}
+async function writeHistory(root, entry) {
+  const { entries, warnings } = await readHistory(root);
+  const next = [...entries, entry].slice(-HISTORY_LIMIT);
+  await import_promises.default.writeFile(import_node_path.default.join(root, HISTORY_FILE), `${JSON.stringify(next, null, 2)}
+`, "utf8");
+  return { entries: next, warnings };
+}
+function buildHistoryEntry(report, sha, date = (/* @__PURE__ */ new Date()).toISOString()) {
+  return {
+    sha,
+    date,
+    score: report.summary.score,
+    grade: report.summary.grade,
+    dimensions: report.dimensions.map((dimension) => ({
+      id: dimension.id,
+      score: dimension.score,
+      grade: dimension.grade
+    }))
+  };
+}
+function computeScoreDelta(previous, report) {
+  if (!previous) return void 0;
+  const previousDimensionScores = new Map(previous.dimensions.map((dimension) => [dimension.id, dimension.score]));
+  return {
+    overall: report.summary.score - previous.score,
+    dimensions: report.dimensions.map((dimension) => ({
+      id: dimension.id,
+      value: dimension.score - (previousDimensionScores.get(dimension.id) ?? dimension.score)
+    }))
+  };
+}
+function isHistoryEntry(value) {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value;
+  return typeof candidate.sha === "string" && typeof candidate.date === "string" && typeof candidate.score === "number" && typeof candidate.grade === "string" && Array.isArray(candidate.dimensions) && candidate.dimensions.every(
+    (dimension) => dimension && typeof dimension === "object" && typeof dimension.id === "string" && typeof dimension.score === "number" && typeof dimension.grade === "string"
+  );
+}
+
 // src/parser.ts
-var import_promises2 = __toESM(require("fs/promises"), 1);
-var import_node_path2 = __toESM(require("path"), 1);
+var import_promises3 = __toESM(require("fs/promises"), 1);
+var import_node_path3 = __toESM(require("path"), 1);
 var import_parser = __toESM(require_lib2(), 1);
 var import_traverse = __toESM(require_lib9(), 1);
 var t = __toESM(require_lib5(), 1);
 
 // src/scanner.ts
-var import_promises = __toESM(require("fs/promises"), 1);
-var import_node_path = __toESM(require("path"), 1);
+var import_promises2 = __toESM(require("fs/promises"), 1);
+var import_node_path2 = __toESM(require("path"), 1);
 var import_fast_glob = __toESM(require_out4(), 1);
 var TEST_GLOBS = [
   "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
@@ -72414,7 +72481,7 @@ var TEST_GLOBS = [
   "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
 ];
 async function scanProject(rootInput = ".", ignore = []) {
-  const root = import_node_path.default.resolve(rootInput);
+  const root = import_node_path2.default.resolve(rootInput);
   const warnings = [];
   const project = await readProject(root, warnings);
   const files = await (0, import_fast_glob.default)(TEST_GLOBS, {
@@ -72427,8 +72494,8 @@ async function scanProject(rootInput = ".", ignore = []) {
   });
   const normalizedFiles = files.map(toPosix).sort();
   const frameworkSet = new Set(project.frameworks);
-  for (const file of normalizedFiles) {
-    const fromPath = frameworkFromPath(file);
+  for (const file2 of normalizedFiles) {
+    const fromPath = frameworkFromPath(file2);
     if (fromPath !== "unknown") frameworkSet.add(fromPath);
   }
   return {
@@ -72439,19 +72506,19 @@ async function scanProject(rootInput = ".", ignore = []) {
     warnings
   };
 }
-function frameworkFromPath(file) {
-  const normalized = toPosix(file).toLowerCase();
+function frameworkFromPath(file2) {
+  const normalized = toPosix(file2).toLowerCase();
   if (normalized.includes("/cypress/") || normalized.startsWith("cypress/")) return "cypress";
   if (normalized.includes("playwright") || normalized.includes("/e2e/")) return "playwright";
   return "unknown";
 }
-function toPosix(file) {
-  return file.split(import_node_path.default.sep).join("/");
+function toPosix(file2) {
+  return file2.split(import_node_path2.default.sep).join("/");
 }
 async function readProject(root, warnings) {
-  const packagePath = import_node_path.default.join(root, "package.json");
+  const packagePath = import_node_path2.default.join(root, "package.json");
   try {
-    const raw = await import_promises.default.readFile(packagePath, "utf8");
+    const raw = await import_promises2.default.readFile(packagePath, "utf8");
     const pkg = JSON.parse(raw);
     const deps = {
       ...pkg.dependencies,
@@ -72459,14 +72526,14 @@ async function readProject(root, warnings) {
       ...pkg.peerDependencies
     };
     return {
-      name: pkg.name ?? import_node_path.default.basename(root),
+      name: pkg.name ?? import_node_path2.default.basename(root),
       frameworks: detectFrameworks(deps)
     };
   } catch (error) {
     if (error.code !== "ENOENT") {
       warnings.push(`Could not read package.json: ${error.message}`);
     }
-    return { name: import_node_path.default.basename(root), frameworks: [] };
+    return { name: import_node_path2.default.basename(root), frameworks: [] };
   }
 }
 function detectFrameworks(deps) {
@@ -72503,8 +72570,8 @@ var STRUCTURE_MATCHERS = /* @__PURE__ */ new Set([
 var SNAPSHOT_MATCHERS = /* @__PURE__ */ new Set(["toMatchSnapshot", "toMatchInlineSnapshot", "toThrowErrorMatchingSnapshot"]);
 var traverseAst = import_traverse.default.default ?? import_traverse.default;
 async function analyzeFile(root, relativeFile, detectedFrameworks) {
-  const absoluteFile = import_node_path2.default.join(root, relativeFile);
-  const source = await import_promises2.default.readFile(absoluteFile, "utf8");
+  const absoluteFile = import_node_path3.default.join(root, relativeFile);
+  const source = await import_promises3.default.readFile(absoluteFile, "utf8");
   const pathFramework = frameworkFromPath(relativeFile);
   const framework = pathFramework === "unknown" ? detectedFrameworks[0] ?? "unknown" : pathFramework;
   const commentedOutTests = findCommentedOutTests(source, relativeFile);
@@ -72534,6 +72601,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
       tests: [],
       skippedBlocks: [],
       commentedOutTests,
+      isolationSignals: [],
       warnings
     };
   }
@@ -72544,6 +72612,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
   const suiteStack = [];
   const tests = [];
   const skippedBlocks = [];
+  const isolationSignals = [];
   traverseAst(ast, {
     CallExpression: {
       enter(callPath) {
@@ -72555,6 +72624,8 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
         if (call.kind === "suite") {
           const suiteName = name || "(anonymous suite)";
           const skipped2 = call.skipped || suiteStack.some((suite) => suite.skipped);
+          const suiteSignals = collectSuiteSignals(callPath, args, relativeFile, suiteName);
+          for (const signal of suiteSignals.signals) isolationSignals.push(signal);
           if (call.skipped || call.only || call.todo) {
             skippedBlocks.push({
               name: suiteName,
@@ -72565,7 +72636,13 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
               modifier: call.only ? "only" : call.todo ? "todo" : "skip"
             });
           }
-          suiteStack.push({ name: suiteName, skipped: skipped2 });
+          suiteStack.push({
+            name: suiteName,
+            skipped: skipped2,
+            mutableDescribeVars: suiteSignals.mutableDescribeVars,
+            hasAfterEachCleanup: suiteSignals.hasAfterEachCleanup,
+            hasAfterEachModuleCleanup: suiteSignals.hasAfterEachModuleCleanup
+          });
           return;
         }
         const testName = name || "(anonymous test)";
@@ -72580,7 +72657,19 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
             modifier: call.only ? "only" : call.todo ? "todo" : "skip"
           });
         }
-        tests.push(extractTest(callPath, args, testName, suiteStack, relativeFile, framework, skipped, call.only, call.todo));
+        const extracted = extractTest(
+          callPath,
+          args,
+          testName,
+          suiteStack,
+          relativeFile,
+          framework,
+          skipped,
+          call.only,
+          call.todo
+        );
+        tests.push(extracted.test);
+        isolationSignals.push(...extracted.isolationSignals);
       },
       exit(callPath) {
         const call = getCalleeInfo(callPath.node);
@@ -72595,10 +72684,11 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
     tests,
     skippedBlocks,
     commentedOutTests,
+    isolationSignals,
     warnings
   };
 }
-function extractTest(callPath, args, name, suites, file, framework, skipped, only, todo) {
+function extractTest(callPath, args, name, suites, file2, framework, skipped, only, todo) {
   const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
   const callbackPath = callbackIndex >= 0 ? callPath.get(`arguments.${callbackIndex}`) : void 0;
   const metrics = {
@@ -72606,7 +72696,13 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
     hardcodedWaitCount: 0,
     timeDependentCount: 0,
     randomCount: 0,
-    externalHttpCount: 0
+    externalHttpCount: 0,
+    spyOnCount: 0,
+    mockRestoreCount: 0,
+    restoreAllMocksCount: 0,
+    moduleStateCount: 0,
+    globalMutationCount: 0,
+    mutatedDescribeVars: /* @__PURE__ */ new Set()
   };
   if (callbackPath && (callbackPath.isFunctionExpression() || callbackPath.isArrowFunctionExpression())) {
     callbackPath.traverse({
@@ -72616,21 +72712,38 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
         if (isHardcodedWait(innerPath.node)) metrics.hardcodedWaitCount += 1;
         if (isDateNow(innerPath.node)) metrics.timeDependentCount += 1;
         if (isRandom(innerPath.node)) metrics.randomCount += 1;
+        if (isJestSpyOn(innerPath.node)) metrics.spyOnCount += 1;
+        if (isMockRestore(innerPath.node)) metrics.mockRestoreCount += 1;
+        if (isRestoreAllMocks(innerPath.node)) metrics.restoreAllMocksCount += 1;
+        if (isModuleStateCall(innerPath.node)) metrics.moduleStateCount += 1;
       },
       NewExpression(innerPath) {
         if (t.isIdentifier(innerPath.node.callee, { name: "Date" })) metrics.timeDependentCount += 1;
       },
       StringLiteral(innerPath) {
         if (isExternalHttp(innerPath.node.value)) metrics.externalHttpCount += 1;
+      },
+      AssignmentExpression(innerPath) {
+        const mutableVars = collectMutableDescribeVars(suites);
+        for (const identifier of assignedIdentifiers(innerPath.node.left)) {
+          if (mutableVars.has(identifier)) metrics.mutatedDescribeVars.add(identifier);
+        }
+        if (isGlobalMutationTarget(innerPath.node.left)) metrics.globalMutationCount += 1;
+      },
+      UpdateExpression(innerPath) {
+        if (t.isIdentifier(innerPath.node.argument)) {
+          const mutableVars = collectMutableDescribeVars(suites);
+          if (mutableVars.has(innerPath.node.argument.name)) metrics.mutatedDescribeVars.add(innerPath.node.argument.name);
+        }
       }
     });
   }
   const location = locationOf(callPath.node);
   const fullName = [...suites.map((suite) => suite.name), name].join(" > ");
-  return {
+  const test = {
     name,
     fullName,
-    file,
+    file: file2,
     line: location.line,
     column: location.column,
     framework,
@@ -72646,6 +72759,179 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
     randomCount: metrics.randomCount,
     externalHttpCount: metrics.externalHttpCount
   };
+  const isolationSignals = collectTestIsolationSignals(metrics, suites, test);
+  return { test, isolationSignals };
+}
+function collectSuiteSignals(callPath, args, file2, suiteName) {
+  const result = {
+    mutableDescribeVars: /* @__PURE__ */ new Set(),
+    hasAfterEachCleanup: false,
+    hasAfterEachModuleCleanup: false,
+    signals: []
+  };
+  const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  const callback = callbackIndex >= 0 ? args[callbackIndex] : void 0;
+  if (!callback || !t.isFunctionExpression(callback) && !t.isArrowFunctionExpression(callback)) return result;
+  if (!t.isBlockStatement(callback.body)) return result;
+  let beforeAllCount = 0;
+  let afterAllCount = 0;
+  for (const statement of callback.body.body) {
+    if (t.isVariableDeclaration(statement) && (statement.kind === "let" || statement.kind === "var")) {
+      for (const declaration of statement.declarations) {
+        for (const identifier of patternIdentifiers(declaration.id)) {
+          result.mutableDescribeVars.add(identifier);
+        }
+      }
+      continue;
+    }
+    const expression = expressionCall(statement);
+    if (!expression) continue;
+    const hook2 = hookName(expression);
+    if (!hook2) continue;
+    if (hook2 === "beforeAll") {
+      beforeAllCount += 1;
+      continue;
+    }
+    if (hook2 === "afterAll") {
+      afterAllCount += 1;
+      continue;
+    }
+    if (hook2 === "afterEach") {
+      const hookBody = hookCallbackBody(expression.arguments);
+      if (!hookBody) continue;
+      const hookMetrics = analyzeCleanupCalls(hookBody);
+      if (hookMetrics.hasCleanup) result.hasAfterEachCleanup = true;
+      if (hookMetrics.hasModuleCleanup) result.hasAfterEachModuleCleanup = true;
+    }
+  }
+  if (beforeAllCount > 0 && afterAllCount === 0) {
+    const location = locationOf(callPath.node);
+    result.signals.push({
+      kind: "beforeall-no-afterall",
+      file: file2,
+      line: location.line,
+      column: location.column,
+      suiteName,
+      evidence: "beforeAll() without matching afterAll()"
+    });
+  }
+  return result;
+}
+function collectTestIsolationSignals(metrics, suites, test) {
+  const signals = [];
+  const hasAfterEachCleanup = suites.some((suite) => suite.hasAfterEachCleanup);
+  const hasAfterEachModuleCleanup = suites.some((suite) => suite.hasAfterEachModuleCleanup || suite.hasAfterEachCleanup);
+  if (metrics.mutatedDescribeVars.size > 0) {
+    signals.push({
+      kind: "mutable-describe-var",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `mutates describe-scope var(s): ${[...metrics.mutatedDescribeVars].sort().join(", ")}`
+    });
+  }
+  if (metrics.spyOnCount > 0 && metrics.mockRestoreCount === 0 && metrics.restoreAllMocksCount === 0 && !hasAfterEachCleanup) {
+    signals.push({
+      kind: "spy-no-restore",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.spyOnCount} spyOn call(s), no restore in test or afterEach`
+    });
+  }
+  if (metrics.globalMutationCount > 0 && !hasAfterEachCleanup) {
+    signals.push({
+      kind: "global-mutation",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.globalMutationCount} global assignment(s) without cleanup`
+    });
+  }
+  if (metrics.moduleStateCount > 0 && !hasAfterEachModuleCleanup) {
+    signals.push({
+      kind: "module-state",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.moduleStateCount} module-state call(s) without afterEach cleanup`
+    });
+  }
+  return signals;
+}
+function collectMutableDescribeVars(suites) {
+  const vars = /* @__PURE__ */ new Set();
+  for (const suite of suites) {
+    for (const name of suite.mutableDescribeVars) vars.add(name);
+  }
+  return vars;
+}
+function assignedIdentifiers(target) {
+  if (t.isIdentifier(target)) return [target.name];
+  if (t.isMemberExpression(target) || t.isOptionalMemberExpression(target)) return [];
+  if (t.isObjectPattern(target)) {
+    const values = [];
+    for (const property of target.properties) {
+      if (t.isRestElement(property)) values.push(...assignedIdentifiers(property.argument));
+      if (t.isObjectProperty(property)) values.push(...assignedIdentifiers(property.value));
+    }
+    return values;
+  }
+  if (t.isArrayPattern(target)) {
+    return target.elements.flatMap((element) => {
+      if (!element) return [];
+      if (t.isRestElement(element)) return assignedIdentifiers(element.argument);
+      return assignedIdentifiers(element);
+    });
+  }
+  if (t.isAssignmentPattern(target)) return assignedIdentifiers(target.left);
+  return [];
+}
+function patternIdentifiers(pattern) {
+  return assignedIdentifiers(pattern);
+}
+function expressionCall(statement) {
+  if (!t.isExpressionStatement(statement) || !t.isCallExpression(statement.expression)) return void 0;
+  return statement.expression;
+}
+function hookName(call) {
+  const parts = memberParts(t.isCallExpression(call.callee) ? call.callee.callee : call.callee);
+  const base = parts[0];
+  if (base === "beforeAll") return "beforeAll";
+  if (base === "afterAll") return "afterAll";
+  if (base === "afterEach") return "afterEach";
+  if (base === "beforeEach") return "beforeEach";
+  return void 0;
+}
+function hookCallbackBody(args) {
+  const callback = args.find((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  if (!callback) return void 0;
+  if (t.isFunctionExpression(callback) || t.isArrowFunctionExpression(callback)) {
+    return t.isBlockStatement(callback.body) ? callback.body : void 0;
+  }
+  return void 0;
+}
+function analyzeCleanupCalls(body) {
+  let hasCleanup = false;
+  let hasModuleCleanup = false;
+  traverseAst(
+    t.file(t.program(body.body)),
+    {
+      CallExpression(callPath) {
+        if (isMockRestore(callPath.node) || isRestoreAllMocks(callPath.node) || isClearOrResetAllMocks(callPath.node)) {
+          hasCleanup = true;
+        }
+        if (isModuleCleanupCall(callPath.node) || isClearOrResetAllMocks(callPath.node) || isRestoreAllMocks(callPath.node)) {
+          hasModuleCleanup = true;
+        }
+      }
+    }
+  );
+  return { hasCleanup, hasModuleCleanup };
 }
 function getCalleeInfo(node) {
   const callee = t.isCallExpression(node.callee) ? node.callee.callee : node.callee;
@@ -72733,6 +73019,32 @@ function isDateNow(node) {
 function isRandom(node) {
   return memberParts(node.callee).join(".") === "Math.random";
 }
+function isJestSpyOn(node) {
+  return memberParts(node.callee).join(".") === "jest.spyOn";
+}
+function isRestoreAllMocks(node) {
+  return memberParts(node.callee).join(".") === "jest.restoreAllMocks";
+}
+function isClearOrResetAllMocks(node) {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.clearAllMocks" || callee === "jest.resetAllMocks";
+}
+function isMockRestore(node) {
+  return memberParts(node.callee).at(-1) === "mockRestore";
+}
+function isModuleStateCall(node) {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.mock" || callee === "jest.resetModules";
+}
+function isModuleCleanupCall(node) {
+  return memberParts(node.callee).join(".") === "jest.resetModules";
+}
+function isGlobalMutationTarget(node) {
+  if (!t.isMemberExpression(node) && !t.isOptionalMemberExpression(node)) return false;
+  const parts = memberParts(node);
+  if (parts[0] === "global" || parts[0] === "window") return true;
+  return parts[0] === "process" && parts[1] === "env";
+}
 function isExternalHttp(value) {
   return /^https?:\/\//i.test(value) && !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(value);
 }
@@ -72742,6 +73054,9 @@ function memberParts(node) {
   if (t.isSuper(node) || t.isThisExpression(node)) return [];
   if (t.isCallExpression(node)) return memberParts(node.callee);
   if (t.isMemberExpression(node)) {
+    return [...memberParts(node.object), propertyName(node.property)].filter((part) => Boolean(part));
+  }
+  if (t.isOptionalMemberExpression(node)) {
     return [...memberParts(node.object), propertyName(node.property)].filter((part) => Boolean(part));
   }
   return [];
@@ -72758,20 +73073,20 @@ function locationOf(node) {
     column: node.loc?.start.column ?? 0
   };
 }
-function findCommentedOutTests(source, file) {
+function findCommentedOutTests(source, file2) {
   const results = [];
   const lines = source.split(/\r?\n/);
   lines.forEach((line, index) => {
     const trimmed = line.trim();
     if (/^\/\/\s*(it|test|describe|context|specify)\s*(\.skip|\.only|\.todo)?\s*\(/.test(trimmed)) {
-      results.push({ file, line: index + 1, evidence: trimmed.slice(0, 140) });
+      results.push({ file: file2, line: index + 1, evidence: trimmed.slice(0, 140) });
     }
   });
   const blockPattern = /\/\*[\s\S]*?\*\//g;
   for (const match of source.matchAll(blockPattern)) {
     if (/\b(it|test|describe|context|specify)\s*(\.skip|\.only|\.todo)?\s*\(/.test(match[0])) {
       const line = source.slice(0, match.index).split(/\r?\n/).length;
-      results.push({ file, line, evidence: match[0].replace(/\s+/g, " ").slice(0, 140) });
+      results.push({ file: file2, line, evidence: match[0].replace(/\s+/g, " ").slice(0, 140) });
     }
   }
   return results;
@@ -72849,15 +73164,15 @@ var BEHAVIOR_WORD = /\b(should|when|given|then|returns?|throws?|rejects?|resolve
 var NEGATIVE_OR_EDGE = /\b(error|errors|throw|throws|reject|rejects|fail|fails|invalid|empty|null|undefined|edge|boundary|missing|not found|timeout|denied|unauthorized|forbidden|malformed)\b/i;
 function runRules(files) {
   const issues = [];
-  for (const file of files) {
-    for (const test of file.tests) {
+  for (const file2 of files) {
+    for (const test of file2.tests) {
       assertionQuality(test, issues);
       flakinessRisk(test, issues);
       namingClarity(test, issues);
       deadTestRisk(test, issues);
     }
-    coverageBalance(file, issues);
-    for (const skipped of file.skippedBlocks) {
+    coverageBalance(file2, issues);
+    for (const skipped of file2.skippedBlocks) {
       if (skipped.kind === "suite" || skipped.modifier === "only") {
         pushIssue(issues, {
           ruleId: skipped.modifier === "only" ? "dead-focused-block" : "dead-skipped-block",
@@ -72872,7 +73187,7 @@ function runRules(files) {
         });
       }
     }
-    for (const commented of file.commentedOutTests) {
+    for (const commented of file2.commentedOutTests) {
       pushIssue(issues, {
         ruleId: "dead-commented-test",
         dimension: "dead-test-risk",
@@ -72883,6 +73198,9 @@ function runRules(files) {
         column: 0,
         evidence: commented.evidence
       });
+    }
+    for (const signal of file2.isolationSignals) {
+      applyIsolationSignal(signal, issues);
     }
   }
   return issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId));
@@ -72987,10 +73305,10 @@ function namingClarity(test, issues) {
     });
   }
 }
-function coverageBalance(file, issues) {
-  if (file.tests.length === 0) return;
-  if (file.tests.length === 1) {
-    const test = file.tests[0];
+function coverageBalance(file2, issues) {
+  if (file2.tests.length === 0) return;
+  if (file2.tests.length === 1) {
+    const test = file2.tests[0];
     if (test) {
       pushTestIssue(issues, test, {
         ruleId: "coverage-single-test-file",
@@ -73001,7 +73319,7 @@ function coverageBalance(file, issues) {
       });
     }
   }
-  const runnableTests = file.tests.filter((test) => !test.skipped && !test.todo);
+  const runnableTests = file2.tests.filter((test) => !test.skipped && !test.todo);
   if (runnableTests.length >= 2 && !runnableTests.some((test) => NEGATIVE_OR_EDGE.test(test.fullName))) {
     const first = runnableTests[0];
     if (first) {
@@ -73035,6 +73353,80 @@ function deadTestRisk(test, issues) {
     });
   }
 }
+function applyIsolationSignal(signal, issues) {
+  if (signal.kind === "mutable-describe-var") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-mutable-describe-var",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Describe-scope mutable variable is mutated inside a test.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "beforeall-no-afterall") {
+    const suiteMeta = signal.suiteName ? { testName: signal.suiteName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-beforeall-no-afterall",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "Suite uses beforeAll without a matching afterAll cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...suiteMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "spy-no-restore") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-spy-no-restore",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "spyOn is used without restoring mocks in test or afterEach.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "global-mutation") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-global-mutation",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Global state is mutated inside a test without cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  const testMeta = signal.testName ? { testName: signal.testName } : {};
+  pushIssue(issues, {
+    ruleId: "isolation-module-state",
+    dimension: "isolation-risk",
+    severity: "low",
+    message: "Module state is mocked/reset in test without afterEach cleanup.",
+    file: signal.file,
+    line: signal.line,
+    column: signal.column,
+    ...testMeta,
+    evidence: signal.evidence
+  });
+}
 function pushTestIssue(issues, test, issue) {
   pushIssue(issues, {
     ...issue,
@@ -73054,21 +73446,22 @@ function pushIssue(issues, issue) {
 
 // src/analyze.ts
 async function analyzeProject(options = {}) {
-  const root = import_node_path3.default.resolve(options.root ?? ".");
+  const root = import_node_path4.default.resolve(options.root ?? ".");
   const scan = await scanProject(root, options.ignore ?? []);
-  const files = await Promise.all(scan.files.map((file) => analyzeFile(root, file, scan.frameworks)));
+  const files = await Promise.all(scan.files.map((file2) => analyzeFile(root, file2, scan.frameworks)));
   const issues = runRules(files);
-  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings)];
-  const testCount = files.reduce((sum, file) => sum + file.testCount, 0);
+  const history = await readHistory(root);
+  const warnings = [...scan.warnings, ...files.flatMap((file2) => file2.warnings), ...history.warnings];
+  const testCount = files.reduce((sum, file2) => sum + file2.testCount, 0);
   const frameworks = uniqueFrameworks([
     ...scan.frameworks,
-    ...files.map((file) => file.framework)
+    ...files.map((file2) => file2.framework)
   ]);
   if (scan.files.length === 0) warnings.push("No test files found.");
   if (testCount === 0) warnings.push("No tests detected.");
   const dimensions = scoreDimensions(issues, testCount);
   const score = testCount === 0 ? 0 : overallScore(dimensions);
-  return {
+  const report = {
     tool: "assertiq",
     version: TOOL_VERSION,
     project: scan.projectName,
@@ -73083,8 +73476,12 @@ async function analyzeProject(options = {}) {
     },
     dimensions,
     issues,
+    history: history.entries,
     warnings
   };
+  const scoreDelta = computeScoreDelta(history.entries.at(-1), report);
+  if (scoreDelta) report.scoreDelta = scoreDelta;
+  return report;
 }
 function uniqueFrameworks(frameworks) {
   const clean = frameworks.filter((framework) => framework !== "unknown");
@@ -73141,19 +73538,19 @@ async function safeUpsertStickyComment(api, context3, marker, body, onWarning) {
 }
 
 // src/action-paths.ts
-var import_node_path4 = __toESM(require("path"), 1);
+var import_node_path5 = __toESM(require("path"), 1);
 function resolveActionPaths(dirInput, workspaceInput = process.env.GITHUB_WORKSPACE ?? process.cwd()) {
-  const workspaceRoot = import_node_path4.default.resolve(workspaceInput);
-  const headRoot = import_node_path4.default.resolve(workspaceRoot, dirInput || ".");
-  const baseRelativeDir = isPathInside(workspaceRoot, headRoot) ? import_node_path4.default.relative(workspaceRoot, headRoot) || "." : null;
+  const workspaceRoot = import_node_path5.default.resolve(workspaceInput);
+  const headRoot = import_node_path5.default.resolve(workspaceRoot, dirInput || ".");
+  const baseRelativeDir = isPathInside(workspaceRoot, headRoot) ? import_node_path5.default.relative(workspaceRoot, headRoot) || "." : null;
   return { workspaceRoot, headRoot, baseRelativeDir };
 }
 function resolveBaseScanRoot(baseWorktreeRoot, baseRelativeDir) {
-  return import_node_path4.default.resolve(baseWorktreeRoot, baseRelativeDir);
+  return import_node_path5.default.resolve(baseWorktreeRoot, baseRelativeDir);
 }
 function isPathInside(base, target) {
-  const relative = import_node_path4.default.relative(base, target);
-  return relative === "" || !relative.startsWith("..") && !import_node_path4.default.isAbsolute(relative);
+  const relative = import_node_path5.default.relative(base, target);
+  return relative === "" || !relative.startsWith("..") && !import_node_path5.default.isAbsolute(relative);
 }
 
 // src/action-utils.ts
@@ -73192,20 +73589,26 @@ function setActionFailed(message) {
 function escapeActionCommand(value) {
   return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 }
+function shouldWriteHistoryForAction(trackHistory, eventName, ref) {
+  if (!trackHistory) return false;
+  return eventName === "push" && ref === "refs/heads/main";
+}
 
 // src/reporters/markdown.ts
 var COMMENT_MARKER = "<!-- assertiq-comment -->";
 function renderMarkdownComment(report, newIssues) {
+  const overallDelta = report.scoreDelta?.overall;
+  const overallMovement = overallDelta === void 0 ? `${report.summary.score}/100` : `${report.summary.score - overallDelta} \u2192 ${report.summary.score} (${formatDelta(overallDelta)})`;
   const lines = [
     COMMENT_MARKER,
     "## AssertIQ Test Intelligence",
     "",
-    `**Overall:** ${report.summary.grade} (${report.summary.score}/100)`,
+    `**Overall:** ${report.summary.grade} (${overallMovement})`,
     "",
-    "| Dimension | Grade | Score | Risks |",
-    "|---|---:|---:|---:|",
+    "| Dimension | Grade | Score | \u0394 | Risks |",
+    "|---|---:|---:|---:|---:|",
     ...report.dimensions.map(
-      (dimension) => `| ${dimension.name} | ${dimension.grade} | ${dimension.score} | ${dimension.issueCount} |`
+      (dimension) => `| ${dimension.name} | ${dimension.grade} | ${dimension.score} | ${formatDimensionDelta(report, dimension.id)} | ${dimension.issueCount} |`
     ),
     "",
     `**New risks introduced:** ${newIssues.length}`
@@ -73225,6 +73628,15 @@ function renderMarkdownComment(report, newIssues) {
 function escapeMarkdown(value) {
   return value.replace(/\|/g, "\\|");
 }
+function formatDimensionDelta(report, dimensionId) {
+  const delta = report.scoreDelta?.dimensions.find((item) => item.id === dimensionId);
+  if (!delta) return "\u2014";
+  return formatDelta(delta.value);
+}
+function formatDelta(value) {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
 
 // src/action.ts
 async function run() {
@@ -73232,6 +73644,7 @@ async function run() {
   const ignore = splitActionInput(getActionInput("ignore"));
   const failBelow = getActionInput("fail-below") || void 0;
   const postComment = (getActionInput("post-comment") || "true").toLowerCase() !== "false";
+  const trackHistory = (getActionInput("track-history") || "false").toLowerCase() === "true";
   const token = getActionInput("github-token") || process.env.GITHUB_TOKEN || "";
   const paths = resolveActionPaths(dirInput);
   const headReport = await analyzeProject({ root: paths.headRoot, ignore });
@@ -73249,6 +73662,11 @@ async function run() {
       if (baseReport) newIssues = diffIssues(baseReport, headReport);
     }
   }
+  if (shouldWriteHistoryForAction(trackHistory, context2.eventName, process.env.GITHUB_REF ?? "")) {
+    const sha = process.env.GITHUB_SHA ?? "unknown";
+    const writeResult = await writeHistory(paths.headRoot, buildHistoryEntry(headReport, sha));
+    for (const warning of writeResult.warnings) actionWarning(warning);
+  }
   setActionOutput("score", String(headReport.summary.score));
   setActionOutput("grade", headReport.summary.grade);
   setActionOutput("json", JSON.stringify(headReport));
@@ -73263,7 +73681,7 @@ async function analyzeBase(baseRelativeDir, ignore) {
   const pullRequest = context2.payload.pull_request;
   if (!pullRequest?.base?.sha) throw new Error("Missing pull request base SHA.");
   const baseSha = pullRequest.base.sha;
-  const tempDir = import_node_fs2.default.mkdtempSync(import_node_path5.default.join(import_node_os.default.tmpdir(), "assertiq-base-"));
+  const tempDir = import_node_fs2.default.mkdtempSync(import_node_path6.default.join(import_node_os.default.tmpdir(), "assertiq-base-"));
   try {
     (0, import_node_child_process.execFileSync)("git", ["fetch", "--no-tags", "--depth=1", "origin", baseSha], { stdio: "pipe" });
     (0, import_node_child_process.execFileSync)("git", ["worktree", "add", "--detach", tempDir, baseSha], { stdio: "pipe" });

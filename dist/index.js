@@ -1,10 +1,10 @@
 // src/analyze.ts
-import path3 from "path";
+import path4 from "path";
 
 // package.json
 var package_default = {
   name: "@mov2day/assertiq",
-  version: "0.1.3",
+  version: "0.2.0",
   description: "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
   type: "module",
   bin: {
@@ -76,11 +76,12 @@ var package_default = {
 // src/constants.ts
 var TOOL_VERSION = package_default.version;
 var DIMENSIONS = [
-  { id: "assertion-quality", name: "Assertion Quality", weight: 0.3 },
-  { id: "flakiness-risk", name: "Flakiness Risk", weight: 0.25 },
-  { id: "naming-clarity", name: "Naming Clarity", weight: 0.15 },
-  { id: "coverage-balance", name: "Coverage Balance", weight: 0.2 },
-  { id: "dead-test-risk", name: "Dead Test Risk", weight: 0.1 }
+  { id: "assertion-quality", name: "Assertion Quality", weight: 0.28 },
+  { id: "flakiness-risk", name: "Flakiness Risk", weight: 0.23 },
+  { id: "isolation-risk", name: "Isolation Risk", weight: 0.1 },
+  { id: "naming-clarity", name: "Naming Clarity", weight: 0.13 },
+  { id: "coverage-balance", name: "Coverage Balance", weight: 0.18 },
+  { id: "dead-test-risk", name: "Dead Test Risk", weight: 0.08 }
 ];
 var DEFAULT_IGNORE = [
   "**/node_modules/**",
@@ -103,21 +104,88 @@ var GRADE_FLOORS = {
 var DIMENSION_COLORS = {
   "assertion-quality": "#a78bfa",
   "flakiness-risk": "#f7c948",
+  "isolation-risk": "#7bc4ff",
   "naming-clarity": "#4f8ef7",
   "coverage-balance": "#5ee8a0",
   "dead-test-risk": "#f76f6f"
 };
 
+// src/history.ts
+import fs from "fs/promises";
+import path from "path";
+var HISTORY_FILE = "assertiq-history.json";
+var HISTORY_LIMIT = 90;
+async function readHistory(root) {
+  const historyPath = path.join(root, HISTORY_FILE);
+  try {
+    const raw = await fs.readFile(historyPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return { entries: [], warnings: [`${HISTORY_FILE}: expected JSON array, ignoring history file.`] };
+    }
+    const entries = parsed.filter(isHistoryEntry).slice(-HISTORY_LIMIT);
+    if (entries.length !== parsed.length) {
+      return { entries, warnings: [`${HISTORY_FILE}: dropped invalid history entries.`] };
+    }
+    return { entries, warnings: [] };
+  } catch (error) {
+    const nodeError = error;
+    if (nodeError.code === "ENOENT") return { entries: [], warnings: [] };
+    if (nodeError.name === "SyntaxError") {
+      return { entries: [], warnings: [`${HISTORY_FILE}: invalid JSON, ignoring history file.`] };
+    }
+    return { entries: [], warnings: [`${HISTORY_FILE}: ${nodeError.message}`] };
+  }
+}
+async function writeHistory(root, entry) {
+  const { entries, warnings } = await readHistory(root);
+  const next = [...entries, entry].slice(-HISTORY_LIMIT);
+  await fs.writeFile(path.join(root, HISTORY_FILE), `${JSON.stringify(next, null, 2)}
+`, "utf8");
+  return { entries: next, warnings };
+}
+function buildHistoryEntry(report, sha, date = (/* @__PURE__ */ new Date()).toISOString()) {
+  return {
+    sha,
+    date,
+    score: report.summary.score,
+    grade: report.summary.grade,
+    dimensions: report.dimensions.map((dimension) => ({
+      id: dimension.id,
+      score: dimension.score,
+      grade: dimension.grade
+    }))
+  };
+}
+function computeScoreDelta(previous, report) {
+  if (!previous) return void 0;
+  const previousDimensionScores = new Map(previous.dimensions.map((dimension) => [dimension.id, dimension.score]));
+  return {
+    overall: report.summary.score - previous.score,
+    dimensions: report.dimensions.map((dimension) => ({
+      id: dimension.id,
+      value: dimension.score - (previousDimensionScores.get(dimension.id) ?? dimension.score)
+    }))
+  };
+}
+function isHistoryEntry(value) {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value;
+  return typeof candidate.sha === "string" && typeof candidate.date === "string" && typeof candidate.score === "number" && typeof candidate.grade === "string" && Array.isArray(candidate.dimensions) && candidate.dimensions.every(
+    (dimension) => dimension && typeof dimension === "object" && typeof dimension.id === "string" && typeof dimension.score === "number" && typeof dimension.grade === "string"
+  );
+}
+
 // src/parser.ts
-import fs2 from "fs/promises";
-import path2 from "path";
+import fs3 from "fs/promises";
+import path3 from "path";
 import { parse } from "@babel/parser";
 import traverseModule from "@babel/traverse";
 import * as t from "@babel/types";
 
 // src/scanner.ts
-import fs from "fs/promises";
-import path from "path";
+import fs2 from "fs/promises";
+import path2 from "path";
 import fg from "fast-glob";
 var TEST_GLOBS = [
   "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
@@ -128,7 +196,7 @@ var TEST_GLOBS = [
   "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
 ];
 async function scanProject(rootInput = ".", ignore = []) {
-  const root = path.resolve(rootInput);
+  const root = path2.resolve(rootInput);
   const warnings = [];
   const project = await readProject(root, warnings);
   const files = await fg(TEST_GLOBS, {
@@ -141,8 +209,8 @@ async function scanProject(rootInput = ".", ignore = []) {
   });
   const normalizedFiles = files.map(toPosix).sort();
   const frameworkSet = new Set(project.frameworks);
-  for (const file of normalizedFiles) {
-    const fromPath = frameworkFromPath(file);
+  for (const file2 of normalizedFiles) {
+    const fromPath = frameworkFromPath(file2);
     if (fromPath !== "unknown") frameworkSet.add(fromPath);
   }
   return {
@@ -153,19 +221,19 @@ async function scanProject(rootInput = ".", ignore = []) {
     warnings
   };
 }
-function frameworkFromPath(file) {
-  const normalized = toPosix(file).toLowerCase();
+function frameworkFromPath(file2) {
+  const normalized = toPosix(file2).toLowerCase();
   if (normalized.includes("/cypress/") || normalized.startsWith("cypress/")) return "cypress";
   if (normalized.includes("playwright") || normalized.includes("/e2e/")) return "playwright";
   return "unknown";
 }
-function toPosix(file) {
-  return file.split(path.sep).join("/");
+function toPosix(file2) {
+  return file2.split(path2.sep).join("/");
 }
 async function readProject(root, warnings) {
-  const packagePath = path.join(root, "package.json");
+  const packagePath = path2.join(root, "package.json");
   try {
-    const raw = await fs.readFile(packagePath, "utf8");
+    const raw = await fs2.readFile(packagePath, "utf8");
     const pkg = JSON.parse(raw);
     const deps = {
       ...pkg.dependencies,
@@ -173,14 +241,14 @@ async function readProject(root, warnings) {
       ...pkg.peerDependencies
     };
     return {
-      name: pkg.name ?? path.basename(root),
+      name: pkg.name ?? path2.basename(root),
       frameworks: detectFrameworks(deps)
     };
   } catch (error) {
     if (error.code !== "ENOENT") {
       warnings.push(`Could not read package.json: ${error.message}`);
     }
-    return { name: path.basename(root), frameworks: [] };
+    return { name: path2.basename(root), frameworks: [] };
   }
 }
 function detectFrameworks(deps) {
@@ -217,8 +285,8 @@ var STRUCTURE_MATCHERS = /* @__PURE__ */ new Set([
 var SNAPSHOT_MATCHERS = /* @__PURE__ */ new Set(["toMatchSnapshot", "toMatchInlineSnapshot", "toThrowErrorMatchingSnapshot"]);
 var traverseAst = traverseModule.default ?? traverseModule;
 async function analyzeFile(root, relativeFile, detectedFrameworks) {
-  const absoluteFile = path2.join(root, relativeFile);
-  const source = await fs2.readFile(absoluteFile, "utf8");
+  const absoluteFile = path3.join(root, relativeFile);
+  const source = await fs3.readFile(absoluteFile, "utf8");
   const pathFramework = frameworkFromPath(relativeFile);
   const framework = pathFramework === "unknown" ? detectedFrameworks[0] ?? "unknown" : pathFramework;
   const commentedOutTests = findCommentedOutTests(source, relativeFile);
@@ -248,6 +316,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
       tests: [],
       skippedBlocks: [],
       commentedOutTests,
+      isolationSignals: [],
       warnings
     };
   }
@@ -258,6 +327,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
   const suiteStack = [];
   const tests = [];
   const skippedBlocks = [];
+  const isolationSignals = [];
   traverseAst(ast, {
     CallExpression: {
       enter(callPath) {
@@ -269,6 +339,8 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
         if (call.kind === "suite") {
           const suiteName = name || "(anonymous suite)";
           const skipped2 = call.skipped || suiteStack.some((suite) => suite.skipped);
+          const suiteSignals = collectSuiteSignals(callPath, args, relativeFile, suiteName);
+          for (const signal of suiteSignals.signals) isolationSignals.push(signal);
           if (call.skipped || call.only || call.todo) {
             skippedBlocks.push({
               name: suiteName,
@@ -279,7 +351,13 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
               modifier: call.only ? "only" : call.todo ? "todo" : "skip"
             });
           }
-          suiteStack.push({ name: suiteName, skipped: skipped2 });
+          suiteStack.push({
+            name: suiteName,
+            skipped: skipped2,
+            mutableDescribeVars: suiteSignals.mutableDescribeVars,
+            hasAfterEachCleanup: suiteSignals.hasAfterEachCleanup,
+            hasAfterEachModuleCleanup: suiteSignals.hasAfterEachModuleCleanup
+          });
           return;
         }
         const testName = name || "(anonymous test)";
@@ -294,7 +372,19 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
             modifier: call.only ? "only" : call.todo ? "todo" : "skip"
           });
         }
-        tests.push(extractTest(callPath, args, testName, suiteStack, relativeFile, framework, skipped, call.only, call.todo));
+        const extracted = extractTest(
+          callPath,
+          args,
+          testName,
+          suiteStack,
+          relativeFile,
+          framework,
+          skipped,
+          call.only,
+          call.todo
+        );
+        tests.push(extracted.test);
+        isolationSignals.push(...extracted.isolationSignals);
       },
       exit(callPath) {
         const call = getCalleeInfo(callPath.node);
@@ -309,10 +399,11 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
     tests,
     skippedBlocks,
     commentedOutTests,
+    isolationSignals,
     warnings
   };
 }
-function extractTest(callPath, args, name, suites, file, framework, skipped, only, todo) {
+function extractTest(callPath, args, name, suites, file2, framework, skipped, only, todo) {
   const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
   const callbackPath = callbackIndex >= 0 ? callPath.get(`arguments.${callbackIndex}`) : void 0;
   const metrics = {
@@ -320,7 +411,13 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
     hardcodedWaitCount: 0,
     timeDependentCount: 0,
     randomCount: 0,
-    externalHttpCount: 0
+    externalHttpCount: 0,
+    spyOnCount: 0,
+    mockRestoreCount: 0,
+    restoreAllMocksCount: 0,
+    moduleStateCount: 0,
+    globalMutationCount: 0,
+    mutatedDescribeVars: /* @__PURE__ */ new Set()
   };
   if (callbackPath && (callbackPath.isFunctionExpression() || callbackPath.isArrowFunctionExpression())) {
     callbackPath.traverse({
@@ -330,21 +427,38 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
         if (isHardcodedWait(innerPath.node)) metrics.hardcodedWaitCount += 1;
         if (isDateNow(innerPath.node)) metrics.timeDependentCount += 1;
         if (isRandom(innerPath.node)) metrics.randomCount += 1;
+        if (isJestSpyOn(innerPath.node)) metrics.spyOnCount += 1;
+        if (isMockRestore(innerPath.node)) metrics.mockRestoreCount += 1;
+        if (isRestoreAllMocks(innerPath.node)) metrics.restoreAllMocksCount += 1;
+        if (isModuleStateCall(innerPath.node)) metrics.moduleStateCount += 1;
       },
       NewExpression(innerPath) {
         if (t.isIdentifier(innerPath.node.callee, { name: "Date" })) metrics.timeDependentCount += 1;
       },
       StringLiteral(innerPath) {
         if (isExternalHttp(innerPath.node.value)) metrics.externalHttpCount += 1;
+      },
+      AssignmentExpression(innerPath) {
+        const mutableVars = collectMutableDescribeVars(suites);
+        for (const identifier of assignedIdentifiers(innerPath.node.left)) {
+          if (mutableVars.has(identifier)) metrics.mutatedDescribeVars.add(identifier);
+        }
+        if (isGlobalMutationTarget(innerPath.node.left)) metrics.globalMutationCount += 1;
+      },
+      UpdateExpression(innerPath) {
+        if (t.isIdentifier(innerPath.node.argument)) {
+          const mutableVars = collectMutableDescribeVars(suites);
+          if (mutableVars.has(innerPath.node.argument.name)) metrics.mutatedDescribeVars.add(innerPath.node.argument.name);
+        }
       }
     });
   }
   const location = locationOf(callPath.node);
   const fullName = [...suites.map((suite) => suite.name), name].join(" > ");
-  return {
+  const test = {
     name,
     fullName,
-    file,
+    file: file2,
     line: location.line,
     column: location.column,
     framework,
@@ -360,6 +474,179 @@ function extractTest(callPath, args, name, suites, file, framework, skipped, onl
     randomCount: metrics.randomCount,
     externalHttpCount: metrics.externalHttpCount
   };
+  const isolationSignals = collectTestIsolationSignals(metrics, suites, test);
+  return { test, isolationSignals };
+}
+function collectSuiteSignals(callPath, args, file2, suiteName) {
+  const result = {
+    mutableDescribeVars: /* @__PURE__ */ new Set(),
+    hasAfterEachCleanup: false,
+    hasAfterEachModuleCleanup: false,
+    signals: []
+  };
+  const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  const callback = callbackIndex >= 0 ? args[callbackIndex] : void 0;
+  if (!callback || !t.isFunctionExpression(callback) && !t.isArrowFunctionExpression(callback)) return result;
+  if (!t.isBlockStatement(callback.body)) return result;
+  let beforeAllCount = 0;
+  let afterAllCount = 0;
+  for (const statement of callback.body.body) {
+    if (t.isVariableDeclaration(statement) && (statement.kind === "let" || statement.kind === "var")) {
+      for (const declaration of statement.declarations) {
+        for (const identifier of patternIdentifiers(declaration.id)) {
+          result.mutableDescribeVars.add(identifier);
+        }
+      }
+      continue;
+    }
+    const expression = expressionCall(statement);
+    if (!expression) continue;
+    const hook = hookName(expression);
+    if (!hook) continue;
+    if (hook === "beforeAll") {
+      beforeAllCount += 1;
+      continue;
+    }
+    if (hook === "afterAll") {
+      afterAllCount += 1;
+      continue;
+    }
+    if (hook === "afterEach") {
+      const hookBody = hookCallbackBody(expression.arguments);
+      if (!hookBody) continue;
+      const hookMetrics = analyzeCleanupCalls(hookBody);
+      if (hookMetrics.hasCleanup) result.hasAfterEachCleanup = true;
+      if (hookMetrics.hasModuleCleanup) result.hasAfterEachModuleCleanup = true;
+    }
+  }
+  if (beforeAllCount > 0 && afterAllCount === 0) {
+    const location = locationOf(callPath.node);
+    result.signals.push({
+      kind: "beforeall-no-afterall",
+      file: file2,
+      line: location.line,
+      column: location.column,
+      suiteName,
+      evidence: "beforeAll() without matching afterAll()"
+    });
+  }
+  return result;
+}
+function collectTestIsolationSignals(metrics, suites, test) {
+  const signals = [];
+  const hasAfterEachCleanup = suites.some((suite) => suite.hasAfterEachCleanup);
+  const hasAfterEachModuleCleanup = suites.some((suite) => suite.hasAfterEachModuleCleanup || suite.hasAfterEachCleanup);
+  if (metrics.mutatedDescribeVars.size > 0) {
+    signals.push({
+      kind: "mutable-describe-var",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `mutates describe-scope var(s): ${[...metrics.mutatedDescribeVars].sort().join(", ")}`
+    });
+  }
+  if (metrics.spyOnCount > 0 && metrics.mockRestoreCount === 0 && metrics.restoreAllMocksCount === 0 && !hasAfterEachCleanup) {
+    signals.push({
+      kind: "spy-no-restore",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.spyOnCount} spyOn call(s), no restore in test or afterEach`
+    });
+  }
+  if (metrics.globalMutationCount > 0 && !hasAfterEachCleanup) {
+    signals.push({
+      kind: "global-mutation",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.globalMutationCount} global assignment(s) without cleanup`
+    });
+  }
+  if (metrics.moduleStateCount > 0 && !hasAfterEachModuleCleanup) {
+    signals.push({
+      kind: "module-state",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.moduleStateCount} module-state call(s) without afterEach cleanup`
+    });
+  }
+  return signals;
+}
+function collectMutableDescribeVars(suites) {
+  const vars = /* @__PURE__ */ new Set();
+  for (const suite of suites) {
+    for (const name of suite.mutableDescribeVars) vars.add(name);
+  }
+  return vars;
+}
+function assignedIdentifiers(target) {
+  if (t.isIdentifier(target)) return [target.name];
+  if (t.isMemberExpression(target) || t.isOptionalMemberExpression(target)) return [];
+  if (t.isObjectPattern(target)) {
+    const values = [];
+    for (const property of target.properties) {
+      if (t.isRestElement(property)) values.push(...assignedIdentifiers(property.argument));
+      if (t.isObjectProperty(property)) values.push(...assignedIdentifiers(property.value));
+    }
+    return values;
+  }
+  if (t.isArrayPattern(target)) {
+    return target.elements.flatMap((element) => {
+      if (!element) return [];
+      if (t.isRestElement(element)) return assignedIdentifiers(element.argument);
+      return assignedIdentifiers(element);
+    });
+  }
+  if (t.isAssignmentPattern(target)) return assignedIdentifiers(target.left);
+  return [];
+}
+function patternIdentifiers(pattern) {
+  return assignedIdentifiers(pattern);
+}
+function expressionCall(statement) {
+  if (!t.isExpressionStatement(statement) || !t.isCallExpression(statement.expression)) return void 0;
+  return statement.expression;
+}
+function hookName(call) {
+  const parts = memberParts(t.isCallExpression(call.callee) ? call.callee.callee : call.callee);
+  const base = parts[0];
+  if (base === "beforeAll") return "beforeAll";
+  if (base === "afterAll") return "afterAll";
+  if (base === "afterEach") return "afterEach";
+  if (base === "beforeEach") return "beforeEach";
+  return void 0;
+}
+function hookCallbackBody(args) {
+  const callback = args.find((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  if (!callback) return void 0;
+  if (t.isFunctionExpression(callback) || t.isArrowFunctionExpression(callback)) {
+    return t.isBlockStatement(callback.body) ? callback.body : void 0;
+  }
+  return void 0;
+}
+function analyzeCleanupCalls(body) {
+  let hasCleanup = false;
+  let hasModuleCleanup = false;
+  traverseAst(
+    t.file(t.program(body.body)),
+    {
+      CallExpression(callPath) {
+        if (isMockRestore(callPath.node) || isRestoreAllMocks(callPath.node) || isClearOrResetAllMocks(callPath.node)) {
+          hasCleanup = true;
+        }
+        if (isModuleCleanupCall(callPath.node) || isClearOrResetAllMocks(callPath.node) || isRestoreAllMocks(callPath.node)) {
+          hasModuleCleanup = true;
+        }
+      }
+    }
+  );
+  return { hasCleanup, hasModuleCleanup };
 }
 function getCalleeInfo(node) {
   const callee = t.isCallExpression(node.callee) ? node.callee.callee : node.callee;
@@ -447,6 +734,32 @@ function isDateNow(node) {
 function isRandom(node) {
   return memberParts(node.callee).join(".") === "Math.random";
 }
+function isJestSpyOn(node) {
+  return memberParts(node.callee).join(".") === "jest.spyOn";
+}
+function isRestoreAllMocks(node) {
+  return memberParts(node.callee).join(".") === "jest.restoreAllMocks";
+}
+function isClearOrResetAllMocks(node) {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.clearAllMocks" || callee === "jest.resetAllMocks";
+}
+function isMockRestore(node) {
+  return memberParts(node.callee).at(-1) === "mockRestore";
+}
+function isModuleStateCall(node) {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.mock" || callee === "jest.resetModules";
+}
+function isModuleCleanupCall(node) {
+  return memberParts(node.callee).join(".") === "jest.resetModules";
+}
+function isGlobalMutationTarget(node) {
+  if (!t.isMemberExpression(node) && !t.isOptionalMemberExpression(node)) return false;
+  const parts = memberParts(node);
+  if (parts[0] === "global" || parts[0] === "window") return true;
+  return parts[0] === "process" && parts[1] === "env";
+}
 function isExternalHttp(value) {
   return /^https?:\/\//i.test(value) && !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(value);
 }
@@ -456,6 +769,9 @@ function memberParts(node) {
   if (t.isSuper(node) || t.isThisExpression(node)) return [];
   if (t.isCallExpression(node)) return memberParts(node.callee);
   if (t.isMemberExpression(node)) {
+    return [...memberParts(node.object), propertyName(node.property)].filter((part) => Boolean(part));
+  }
+  if (t.isOptionalMemberExpression(node)) {
     return [...memberParts(node.object), propertyName(node.property)].filter((part) => Boolean(part));
   }
   return [];
@@ -472,20 +788,20 @@ function locationOf(node) {
     column: node.loc?.start.column ?? 0
   };
 }
-function findCommentedOutTests(source, file) {
+function findCommentedOutTests(source, file2) {
   const results = [];
   const lines = source.split(/\r?\n/);
   lines.forEach((line, index) => {
     const trimmed = line.trim();
     if (/^\/\/\s*(it|test|describe|context|specify)\s*(\.skip|\.only|\.todo)?\s*\(/.test(trimmed)) {
-      results.push({ file, line: index + 1, evidence: trimmed.slice(0, 140) });
+      results.push({ file: file2, line: index + 1, evidence: trimmed.slice(0, 140) });
     }
   });
   const blockPattern = /\/\*[\s\S]*?\*\//g;
   for (const match of source.matchAll(blockPattern)) {
     if (/\b(it|test|describe|context|specify)\s*(\.skip|\.only|\.todo)?\s*\(/.test(match[0])) {
       const line = source.slice(0, match.index).split(/\r?\n/).length;
-      results.push({ file, line, evidence: match[0].replace(/\s+/g, " ").slice(0, 140) });
+      results.push({ file: file2, line, evidence: match[0].replace(/\s+/g, " ").slice(0, 140) });
     }
   }
   return results;
@@ -563,15 +879,15 @@ var BEHAVIOR_WORD = /\b(should|when|given|then|returns?|throws?|rejects?|resolve
 var NEGATIVE_OR_EDGE = /\b(error|errors|throw|throws|reject|rejects|fail|fails|invalid|empty|null|undefined|edge|boundary|missing|not found|timeout|denied|unauthorized|forbidden|malformed)\b/i;
 function runRules(files) {
   const issues = [];
-  for (const file of files) {
-    for (const test of file.tests) {
+  for (const file2 of files) {
+    for (const test of file2.tests) {
       assertionQuality(test, issues);
       flakinessRisk(test, issues);
       namingClarity(test, issues);
       deadTestRisk(test, issues);
     }
-    coverageBalance(file, issues);
-    for (const skipped of file.skippedBlocks) {
+    coverageBalance(file2, issues);
+    for (const skipped of file2.skippedBlocks) {
       if (skipped.kind === "suite" || skipped.modifier === "only") {
         pushIssue(issues, {
           ruleId: skipped.modifier === "only" ? "dead-focused-block" : "dead-skipped-block",
@@ -586,7 +902,7 @@ function runRules(files) {
         });
       }
     }
-    for (const commented of file.commentedOutTests) {
+    for (const commented of file2.commentedOutTests) {
       pushIssue(issues, {
         ruleId: "dead-commented-test",
         dimension: "dead-test-risk",
@@ -597,6 +913,9 @@ function runRules(files) {
         column: 0,
         evidence: commented.evidence
       });
+    }
+    for (const signal of file2.isolationSignals) {
+      applyIsolationSignal(signal, issues);
     }
   }
   return issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId));
@@ -701,10 +1020,10 @@ function namingClarity(test, issues) {
     });
   }
 }
-function coverageBalance(file, issues) {
-  if (file.tests.length === 0) return;
-  if (file.tests.length === 1) {
-    const test = file.tests[0];
+function coverageBalance(file2, issues) {
+  if (file2.tests.length === 0) return;
+  if (file2.tests.length === 1) {
+    const test = file2.tests[0];
     if (test) {
       pushTestIssue(issues, test, {
         ruleId: "coverage-single-test-file",
@@ -715,7 +1034,7 @@ function coverageBalance(file, issues) {
       });
     }
   }
-  const runnableTests = file.tests.filter((test) => !test.skipped && !test.todo);
+  const runnableTests = file2.tests.filter((test) => !test.skipped && !test.todo);
   if (runnableTests.length >= 2 && !runnableTests.some((test) => NEGATIVE_OR_EDGE.test(test.fullName))) {
     const first = runnableTests[0];
     if (first) {
@@ -749,6 +1068,80 @@ function deadTestRisk(test, issues) {
     });
   }
 }
+function applyIsolationSignal(signal, issues) {
+  if (signal.kind === "mutable-describe-var") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-mutable-describe-var",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Describe-scope mutable variable is mutated inside a test.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "beforeall-no-afterall") {
+    const suiteMeta = signal.suiteName ? { testName: signal.suiteName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-beforeall-no-afterall",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "Suite uses beforeAll without a matching afterAll cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...suiteMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "spy-no-restore") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-spy-no-restore",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "spyOn is used without restoring mocks in test or afterEach.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "global-mutation") {
+    const testMeta2 = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-global-mutation",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Global state is mutated inside a test without cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta2,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  const testMeta = signal.testName ? { testName: signal.testName } : {};
+  pushIssue(issues, {
+    ruleId: "isolation-module-state",
+    dimension: "isolation-risk",
+    severity: "low",
+    message: "Module state is mocked/reset in test without afterEach cleanup.",
+    file: signal.file,
+    line: signal.line,
+    column: signal.column,
+    ...testMeta,
+    evidence: signal.evidence
+  });
+}
 function pushTestIssue(issues, test, issue) {
   pushIssue(issues, {
     ...issue,
@@ -768,21 +1161,22 @@ function pushIssue(issues, issue) {
 
 // src/analyze.ts
 async function analyzeProject(options = {}) {
-  const root = path3.resolve(options.root ?? ".");
+  const root = path4.resolve(options.root ?? ".");
   const scan = await scanProject(root, options.ignore ?? []);
-  const files = await Promise.all(scan.files.map((file) => analyzeFile(root, file, scan.frameworks)));
+  const files = await Promise.all(scan.files.map((file2) => analyzeFile(root, file2, scan.frameworks)));
   const issues = runRules(files);
-  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings)];
-  const testCount = files.reduce((sum, file) => sum + file.testCount, 0);
+  const history = await readHistory(root);
+  const warnings = [...scan.warnings, ...files.flatMap((file2) => file2.warnings), ...history.warnings];
+  const testCount = files.reduce((sum, file2) => sum + file2.testCount, 0);
   const frameworks = uniqueFrameworks([
     ...scan.frameworks,
-    ...files.map((file) => file.framework)
+    ...files.map((file2) => file2.framework)
   ]);
   if (scan.files.length === 0) warnings.push("No test files found.");
   if (testCount === 0) warnings.push("No tests detected.");
   const dimensions = scoreDimensions(issues, testCount);
   const score = testCount === 0 ? 0 : overallScore(dimensions);
-  return {
+  const report = {
     tool: "assertiq",
     version: TOOL_VERSION,
     project: scan.projectName,
@@ -797,8 +1191,12 @@ async function analyzeProject(options = {}) {
     },
     dimensions,
     issues,
+    history: history.entries,
     warnings
   };
+  const scoreDelta = computeScoreDelta(history.entries.at(-1), report);
+  if (scoreDelta) report.scoreDelta = scoreDelta;
+  return report;
 }
 function uniqueFrameworks(frameworks) {
   const clean = frameworks.filter((framework) => framework !== "unknown");
@@ -808,6 +1206,8 @@ function uniqueFrameworks(frameworks) {
 // src/reporters/html.ts
 function renderHtmlReport(report) {
   const issues = report.issues.slice(0, 100);
+  const sparkline = renderSparkline(report);
+  const overallDelta = formatDelta(report.scoreDelta?.overall);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -816,7 +1216,7 @@ function renderHtmlReport(report) {
 <title>AssertIQ report - ${escapeHtml(report.project)}</title>
 <style>
 :root{--bg:#0a0c14;--surface:#13151b;--surface2:#1a1d26;--border:#252830;--text:#e4e8f4;--muted:#555e72;--blue:#4f8ef7;--purple:#a78bfa;--warn:#f7c948;--bad:#f76f6f;--good:#5ee8a0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);line-height:1.55}.wrap{max-width:1040px;margin:0 auto;padding:40px 20px 64px}.nav{display:flex;align-items:center;gap:14px;margin-bottom:40px}.mark{width:44px;height:44px;border-radius:11px;background:#050712;position:relative;border:1px solid var(--border)}.mark:before,.mark:after{content:"";position:absolute;top:13px;width:6px;height:18px;border:2px solid var(--blue)}.mark:before{left:10px;border-right:0}.mark:after{right:10px;border-left:0}.check{position:absolute;left:16px;top:17px;width:16px;height:9px;border-left:3px solid var(--purple);border-bottom:3px solid var(--purple);transform:rotate(-45deg)}.brand{font-size:22px;font-weight:800}.brand span{color:var(--purple)}.mono{font-family:"SFMono-Regular",Consolas,monospace}.hero{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end;border-bottom:1px solid var(--border);padding-bottom:32px}.eyebrow{color:var(--blue);font-size:12px;letter-spacing:.14em;text-transform:uppercase}.hero h1{font-size:44px;line-height:1;margin:8px 0 10px}.muted{color:var(--muted)}.score{min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px;text-align:center}.grade{font-size:64px;line-height:1;font-weight:900;color:var(--purple)}.num{font-size:22px;color:var(--blue);margin-top:8px}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:28px 0}.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}.dim-name{font-size:13px;color:var(--muted);min-height:40px}.dim-score{font-size:30px;font-weight:800;margin-top:10px}.bar{height:8px;background:#252830;border-radius:999px;overflow:hidden;margin-top:12px}.fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}.section{margin-top:36px}.section h2{font-size:20px}.issues{display:grid;gap:10px}.issue{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--purple);border-radius:8px;padding:14px}.issue-head{display:flex;gap:10px;justify-content:space-between}.tag{font-size:11px;color:#0a0c14;background:var(--purple);border-radius:999px;padding:2px 8px}.loc{font-size:12px;color:var(--muted);margin-top:6px}.warn{border-left-color:var(--warn)}.bad{border-left-color:var(--bad)}pre{white-space:pre-wrap;color:var(--muted)}@media(max-width:800px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.score{text-align:left}.grade{font-size:48px}}@media(max-width:520px){.grid{grid-template-columns:1fr}.hero h1{font-size:34px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);line-height:1.55}.wrap{max-width:1040px;margin:0 auto;padding:40px 20px 64px}.nav{display:flex;align-items:center;gap:14px;margin-bottom:40px}.mark{width:44px;height:44px;border-radius:11px;background:#050712;position:relative;border:1px solid var(--border)}.mark:before,.mark:after{content:"";position:absolute;top:13px;width:6px;height:18px;border:2px solid var(--blue)}.mark:before{left:10px;border-right:0}.mark:after{right:10px;border-left:0}.check{position:absolute;left:16px;top:17px;width:16px;height:9px;border-left:3px solid var(--purple);border-bottom:3px solid var(--purple);transform:rotate(-45deg)}.brand{font-size:22px;font-weight:800}.brand span{color:var(--purple)}.mono{font-family:"SFMono-Regular",Consolas,monospace}.hero{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end;border-bottom:1px solid var(--border);padding-bottom:32px}.eyebrow{color:var(--blue);font-size:12px;letter-spacing:.14em;text-transform:uppercase}.hero h1{font-size:44px;line-height:1;margin:8px 0 10px}.muted{color:var(--muted)}.score{min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px;text-align:center}.grade{font-size:64px;line-height:1;font-weight:900;color:var(--purple)}.num{font-size:22px;color:var(--blue);margin-top:8px}.delta{font-size:13px;margin-top:4px}.delta.up{color:var(--good)}.delta.down{color:var(--bad)}.delta.flat{color:var(--muted)}.spark{margin-top:10px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:28px 0}.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}.dim-name{font-size:13px;color:var(--muted);min-height:40px}.dim-score{font-size:30px;font-weight:800;margin-top:10px}.bar{height:8px;background:#252830;border-radius:999px;overflow:hidden;margin-top:12px}.fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple))}.section{margin-top:36px}.section h2{font-size:20px}.issues{display:grid;gap:10px}.issue{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--purple);border-radius:8px;padding:14px}.issue-head{display:flex;gap:10px;justify-content:space-between}.tag{font-size:11px;color:#0a0c14;background:var(--purple);border-radius:999px;padding:2px 8px}.loc{font-size:12px;color:var(--muted);margin-top:6px}.warn{border-left-color:var(--warn)}.bad{border-left-color:var(--bad)}pre{white-space:pre-wrap;color:var(--muted)}@media(max-width:800px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.score{text-align:left}.grade{font-size:48px}}@media(max-width:520px){.grid{grid-template-columns:1fr}.hero h1{font-size:34px}}
 </style>
 </head>
 <body>
@@ -828,7 +1228,7 @@ function renderHtmlReport(report) {
       <h1>Test suite report card</h1>
       <p class="muted">${escapeHtml(report.project)} - ${report.summary.testFiles} test file(s) - ${report.summary.tests} test(s)</p>
     </div>
-    <div class="score"><div class="grade">${escapeHtml(report.summary.grade)}</div><div class="num mono">${report.summary.score}/100</div></div>
+    <div class="score"><div class="grade">${escapeHtml(report.summary.grade)}</div><div class="num mono">${report.summary.score}/100</div>${renderDeltaBadge(overallDelta)}${sparkline}</div>
   </section>
   <section class="grid">
     ${report.dimensions.map((dimension) => `<article class="card"><div class="dim-name">${escapeHtml(dimension.name)}</div><div class="dim-score" style="color:${DIMENSION_COLORS[dimension.id]}">${escapeHtml(dimension.grade)}</div><div class="muted mono">${dimension.score}/100 - ${dimension.issueCount} risk(s)</div><div class="bar"><div class="fill" style="width:${dimension.score}%"></div></div></article>`).join("")}
@@ -850,6 +1250,32 @@ function renderIssue(issue) {
     <div class="loc mono">${escapeHtml(issue.file)}:${issue.line}${issue.testName ? ` - ${escapeHtml(issue.testName)}` : ""}</div>
     <div class="muted">${escapeHtml(issue.evidence)}</div>
   </article>`;
+}
+function renderSparkline(report) {
+  const points = [...(report.history ?? []).map((entry) => entry.score), report.summary.score].slice(-30);
+  if (points.length < 2) return "";
+  const width = 176;
+  const height = 36;
+  const pad = 2;
+  const max = Math.max(...points, 100);
+  const min = Math.min(...points, 0);
+  const range = Math.max(1, max - min);
+  const pathData = points.map((score, index) => {
+    const x = index / (points.length - 1) * (width - pad * 2) + pad;
+    const y = height - pad - (score - min) / range * (height - pad * 2);
+    return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="spark" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Score trend"><path d="${pathData}" fill="none" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round"/></svg>`;
+}
+function renderDeltaBadge(delta) {
+  if (delta === void 0) return "";
+  if (delta > 0) return `<div class="delta up mono">\u2191 +${delta}</div>`;
+  if (delta < 0) return `<div class="delta down mono">\u2193 ${delta}</div>`;
+  return `<div class="delta flat mono">\u2192 0</div>`;
+}
+function formatDelta(delta) {
+  if (delta === void 0) return void 0;
+  return delta;
 }
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (char) => {
@@ -903,16 +1329,18 @@ function renderBadge(report) {
 // src/reporters/markdown.ts
 var COMMENT_MARKER = "<!-- assertiq-comment -->";
 function renderMarkdownComment(report, newIssues) {
+  const overallDelta = report.scoreDelta?.overall;
+  const overallMovement = overallDelta === void 0 ? `${report.summary.score}/100` : `${report.summary.score - overallDelta} \u2192 ${report.summary.score} (${formatDelta2(overallDelta)})`;
   const lines = [
     COMMENT_MARKER,
     "## AssertIQ Test Intelligence",
     "",
-    `**Overall:** ${report.summary.grade} (${report.summary.score}/100)`,
+    `**Overall:** ${report.summary.grade} (${overallMovement})`,
     "",
-    "| Dimension | Grade | Score | Risks |",
-    "|---|---:|---:|---:|",
+    "| Dimension | Grade | Score | \u0394 | Risks |",
+    "|---|---:|---:|---:|---:|",
     ...report.dimensions.map(
-      (dimension) => `| ${dimension.name} | ${dimension.grade} | ${dimension.score} | ${dimension.issueCount} |`
+      (dimension) => `| ${dimension.name} | ${dimension.grade} | ${dimension.score} | ${formatDimensionDelta(report, dimension.id)} | ${dimension.issueCount} |`
     ),
     "",
     `**New risks introduced:** ${newIssues.length}`
@@ -932,6 +1360,15 @@ function renderMarkdownComment(report, newIssues) {
 function escapeMarkdown(value) {
   return value.replace(/\|/g, "\\|");
 }
+function formatDimensionDelta(report, dimensionId) {
+  const delta = report.scoreDelta?.dimensions.find((item) => item.id === dimensionId);
+  if (!delta) return "\u2014";
+  return formatDelta2(delta.value);
+}
+function formatDelta2(value) {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
 
 // src/reporters/terminal.ts
 import pc from "picocolors";
@@ -942,7 +1379,7 @@ function renderTerminalReport(report) {
     "",
     ...report.dimensions.map(renderDimension),
     "",
-    `OVERALL ${bar(report.summary.score)} ${colorGrade(report.summary.grade)} ${report.summary.score}`
+    `OVERALL ${bar(report.summary.score)} ${colorGrade(report.summary.grade)} ${report.summary.score}${renderOverallDelta(report)}`
   ];
   if (report.issues.length > 0) {
     lines.push("", pc.yellow("Top risks:"));
@@ -974,18 +1411,29 @@ function colorGrade(grade) {
   if (base === "C") return pc.yellow(grade);
   return pc.red(grade);
 }
+function renderOverallDelta(report) {
+  const delta = report.scoreDelta?.overall;
+  if (delta === void 0) return "";
+  if (delta > 0) return ` ${pc.green(`\u2191 +${delta}`)}`;
+  if (delta < 0) return ` ${pc.red(`\u2193 ${delta}`)}`;
+  return ` ${pc.gray("\u2192 0")}`;
+}
 function topIssues(issues) {
   const rank = { high: 0, medium: 1, low: 2 };
   return [...issues].sort((a, b) => rank[a.severity] - rank[b.severity]).slice(0, 5);
 }
 export {
   analyzeProject,
+  buildHistoryEntry,
+  computeScoreDelta,
   failsThreshold,
   gradeForScore,
   issueFingerprint,
+  readHistory,
   renderBadge,
   renderHtmlReport,
   renderMarkdownComment,
-  renderTerminalReport
+  renderTerminalReport,
+  writeHistory
 };
 //# sourceMappingURL=index.js.map

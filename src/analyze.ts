@@ -1,5 +1,6 @@
 import path from "node:path";
 import { TOOL_VERSION } from "./constants.js";
+import { computeScoreDelta, readHistory } from "./history.js";
 import { analyzeFile } from "./parser.js";
 import { runRules } from "./rules.js";
 import { scanProject } from "./scanner.js";
@@ -11,7 +12,8 @@ export async function analyzeProject(options: AnalyzeOptions = {}): Promise<Asse
   const scan = await scanProject(root, options.ignore ?? []);
   const files = await Promise.all(scan.files.map((file) => analyzeFile(root, file, scan.frameworks)));
   const issues = runRules(files);
-  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings)];
+  const history = await readHistory(root);
+  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings), ...history.warnings];
   const testCount = files.reduce((sum, file) => sum + file.testCount, 0);
   const frameworks = uniqueFrameworks([
     ...scan.frameworks,
@@ -23,8 +25,7 @@ export async function analyzeProject(options: AnalyzeOptions = {}): Promise<Asse
 
   const dimensions = scoreDimensions(issues, testCount);
   const score = testCount === 0 ? 0 : overallScore(dimensions);
-
-  return {
+  const report: AssertIQReport = {
     tool: "assertiq",
     version: TOOL_VERSION,
     project: scan.projectName,
@@ -39,8 +40,13 @@ export async function analyzeProject(options: AnalyzeOptions = {}): Promise<Asse
     },
     dimensions,
     issues,
+    history: history.entries,
     warnings
   };
+  const scoreDelta = computeScoreDelta(history.entries.at(-1), report);
+  if (scoreDelta) report.scoreDelta = scoreDelta;
+
+  return report;
 }
 
 function uniqueFrameworks(frameworks: Framework[]): Framework[] {
