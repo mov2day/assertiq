@@ -57,10 +57,12 @@ jobs:
           git add package.json package-lock.json dist action.yml
           git commit -m "chore(release): v$VERSION [skip ci]"
           git push origin HEAD:main
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin "v$VERSION"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          gh release create "v$VERSION" --target HEAD --generate-notes --title "v$VERSION"
+          gh release create "v$VERSION" --verify-tag --generate-notes --title "v$VERSION"
