@@ -44,6 +44,10 @@ jobs:
           post-comment: true
 ```
 
+## Release
+
+Pushes to `main` can auto bump patch version, publish to npm with trusted publishing, and create GitHub release through [.github/workflows/release.yml](/Users/muthu/Documents/GitHub/AssertIQ/.github/workflows/release.yml). Trusted publishing handles auth through OIDC, so no long-lived npm token is needed.
+
 ## Badge
 
 ```md

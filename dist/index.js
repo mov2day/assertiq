@@ -1,8 +1,80 @@
 // src/analyze.ts
 import path3 from "path";
 
+// package.json
+var package_default = {
+  name: "@mov2day/assertiq",
+  version: "0.1.0",
+  description: "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
+  type: "module",
+  bin: {
+    assertiq: "./dist/cli.js"
+  },
+  main: "./dist/index.js",
+  types: "./dist/index.d.ts",
+  exports: {
+    ".": {
+      types: "./dist/index.d.ts",
+      import: "./dist/index.js"
+    }
+  },
+  files: [
+    "dist",
+    "action.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  engines: {
+    node: ">=22"
+  },
+  scripts: {
+    build: "tsup",
+    typecheck: "tsc --noEmit",
+    test: "npm run build && vitest run",
+    verify: "npm run typecheck && npm test"
+  },
+  keywords: [
+    "test-smells",
+    "testing",
+    "static-analysis",
+    "jest",
+    "vitest",
+    "playwright",
+    "cypress",
+    "mocha"
+  ],
+  license: "MIT",
+  publishConfig: {
+    access: "public"
+  },
+  repository: {
+    type: "git",
+    url: "git+https://github.com/mov2day/assertiq.git"
+  },
+  bugs: {
+    url: "https://github.com/mov2day/assertiq/issues"
+  },
+  homepage: "https://github.com/mov2day/assertiq#readme",
+  dependencies: {
+    "@actions/github": "^9.1.1",
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@babel/types": "^7.28.5",
+    commander: "^14.0.2",
+    "fast-glob": "^3.3.3",
+    picocolors: "^1.1.1"
+  },
+  devDependencies: {
+    "@types/babel__traverse": "^7.28.0",
+    "@types/node": "^24.10.1",
+    tsup: "^8.5.1",
+    typescript: "^5.9.3",
+    vitest: "^4.0.13"
+  }
+};
+
 // src/constants.ts
-var TOOL_VERSION = "0.1.0";
+var TOOL_VERSION = package_default.version;
 var DIMENSIONS = [
   { id: "assertion-quality", name: "Assertion Quality", weight: 0.3 },
   { id: "flakiness-risk", name: "Flakiness Risk", weight: 0.25 },
