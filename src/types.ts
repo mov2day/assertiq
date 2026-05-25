@@ -1,6 +1,7 @@
 export type DimensionId =
   | "assertion-quality"
   | "flakiness-risk"
+  | "isolation-risk"
   | "naming-clarity"
   | "coverage-balance"
   | "dead-test-risk";
@@ -63,6 +64,23 @@ export interface SkippedBlockInfo {
   modifier: "skip" | "todo" | "only";
 }
 
+export type IsolationSignalKind =
+  | "mutable-describe-var"
+  | "beforeall-no-afterall"
+  | "spy-no-restore"
+  | "global-mutation"
+  | "module-state";
+
+export interface IsolationSignal {
+  kind: IsolationSignalKind;
+  file: string;
+  line: number;
+  column: number;
+  evidence: string;
+  testName?: string;
+  suiteName?: string;
+}
+
 export interface CommentedOutTestInfo {
   file: string;
   line: number;
@@ -76,6 +94,7 @@ export interface FileAnalysis {
   tests: TestCaseInfo[];
   skippedBlocks: SkippedBlockInfo[];
   commentedOutTests: CommentedOutTestInfo[];
+  isolationSignals: IsolationSignal[];
   warnings: string[];
 }
 
@@ -110,6 +129,30 @@ export interface ReportSummary {
   frameworks: Framework[];
 }
 
+export interface HistoryDimensionEntry {
+  id: DimensionId;
+  score: number;
+  grade: string;
+}
+
+export interface HistoryEntry {
+  sha: string;
+  date: string;
+  score: number;
+  grade: string;
+  dimensions: HistoryDimensionEntry[];
+}
+
+export interface DimensionDelta {
+  id: DimensionId;
+  value: number;
+}
+
+export interface ScoreDelta {
+  overall: number;
+  dimensions: DimensionDelta[];
+}
+
 export interface AssertIQReport {
   tool: "assertiq";
   version: string;
@@ -118,6 +161,8 @@ export interface AssertIQReport {
   summary: ReportSummary;
   dimensions: DimensionScore[];
   issues: Issue[];
+  history?: HistoryEntry[];
+  scoreDelta?: ScoreDelta;
   warnings: string[];
 }
 

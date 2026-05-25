@@ -72,6 +72,74 @@ describe("service", () => {
     expect(report.summary.grade).toBe("F");
   });
 
+  it("loads history and computes score deltas", async () => {
+    await fs.writeFile(
+      path.join(root, "x.test.ts"),
+      `it("handles invalid input", () => { expect(1).toBe(1); })`,
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(root, "assertiq-history.json"),
+      JSON.stringify([
+        {
+          sha: "prev",
+          date: "2026-05-24T00:00:00.000Z",
+          score: 68,
+          grade: "C",
+          dimensions: [
+            { id: "assertion-quality", score: 70, grade: "C" },
+            { id: "flakiness-risk", score: 70, grade: "C" },
+            { id: "isolation-risk", score: 70, grade: "C" },
+            { id: "naming-clarity", score: 70, grade: "C" },
+            { id: "coverage-balance", score: 70, grade: "C" },
+            { id: "dead-test-risk", score: 70, grade: "C" }
+          ]
+        }
+      ]),
+      "utf8"
+    );
+    const report = await analyzeProject({ root });
+    expect(report.history).toHaveLength(1);
+    expect(report.scoreDelta?.overall).toBe(report.summary.score - 68);
+  });
+
+  it("flags isolation risk rules from AST signals", async () => {
+    await fs.writeFile(
+      path.join(root, "isolation.test.ts"),
+      `
+import { describe, it, expect, beforeAll } from "vitest";
+
+describe("stateful suite", () => {
+  let shared = 0;
+
+  beforeAll(() => {
+    global.foo = "boot";
+  });
+
+  it("mutates shared state", () => {
+    shared += 1;
+    const spy = jest.spyOn(Math, "random");
+    process.env.RUN_MODE = "test";
+    jest.mock("./dep");
+    expect(shared).toBe(1);
+  });
+});
+`,
+      "utf8"
+    );
+
+    const report = await analyzeProject({ root });
+    expect(report.issues.map((issue) => issue.ruleId)).toEqual(
+      expect.arrayContaining([
+        "isolation-mutable-describe-var",
+        "isolation-beforeall-no-afterall",
+        "isolation-spy-no-restore",
+        "isolation-global-mutation",
+        "isolation-module-state"
+      ])
+    );
+  });
+
   it("renders escaped standalone reports", async () => {
     await fs.writeFile(
       path.join(root, "x.test.ts"),

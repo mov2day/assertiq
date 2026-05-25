@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DIMENSIONS } from "../src/constants.js";
 import { failsThreshold, gradeForScore } from "../src/scoring.js";
 
 describe("scoring", () => {
@@ -17,5 +18,11 @@ describe("scoring", () => {
     expect(failsThreshold(75, "B")).toBe(false);
     expect(failsThreshold(59, "C")).toBe(true);
     expect(failsThreshold(12, "F")).toBe(false);
+  });
+
+  it("uses six dimensions with normalized weights", () => {
+    const total = DIMENSIONS.reduce((sum, dimension) => sum + dimension.weight, 0);
+    expect(total).toBeCloseTo(1, 8);
+    expect(DIMENSIONS.map((dimension) => dimension.id)).toContain("isolation-risk");
   });
 });

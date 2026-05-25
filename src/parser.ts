@@ -9,6 +9,7 @@ import type {
   CommentedOutTestInfo,
   FileAnalysis,
   Framework,
+  IsolationSignal,
   SkippedBlockInfo,
   TestCaseInfo
 } from "./types.js";
@@ -24,6 +25,16 @@ interface CalleeInfo {
 interface SuiteContext {
   name: string;
   skipped: boolean;
+  mutableDescribeVars: Set<string>;
+  hasAfterEachCleanup: boolean;
+  hasAfterEachModuleCleanup: boolean;
+}
+
+interface SuiteSignalResult {
+  mutableDescribeVars: Set<string>;
+  hasAfterEachCleanup: boolean;
+  hasAfterEachModuleCleanup: boolean;
+  signals: IsolationSignal[];
 }
 
 const TEST_BASES = new Set(["it", "test", "specify"]);
@@ -83,6 +94,7 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
       tests: [],
       skippedBlocks: [],
       commentedOutTests,
+      isolationSignals: [],
       warnings
     };
   }
@@ -95,6 +107,7 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
   const suiteStack: SuiteContext[] = [];
   const tests: TestCaseInfo[] = [];
   const skippedBlocks: SkippedBlockInfo[] = [];
+  const isolationSignals: IsolationSignal[] = [];
 
   traverseAst(ast, {
     CallExpression: {
@@ -108,6 +121,8 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
         if (call.kind === "suite") {
           const suiteName = name || "(anonymous suite)";
           const skipped = call.skipped || suiteStack.some((suite) => suite.skipped);
+          const suiteSignals = collectSuiteSignals(callPath, args, relativeFile, suiteName);
+          for (const signal of suiteSignals.signals) isolationSignals.push(signal);
           if (call.skipped || call.only || call.todo) {
             skippedBlocks.push({
               name: suiteName,
@@ -118,7 +133,13 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
               modifier: call.only ? "only" : call.todo ? "todo" : "skip"
             });
           }
-          suiteStack.push({ name: suiteName, skipped });
+          suiteStack.push({
+            name: suiteName,
+            skipped,
+            mutableDescribeVars: suiteSignals.mutableDescribeVars,
+            hasAfterEachCleanup: suiteSignals.hasAfterEachCleanup,
+            hasAfterEachModuleCleanup: suiteSignals.hasAfterEachModuleCleanup
+          });
           return;
         }
 
@@ -131,10 +152,22 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
             line: location.line,
             column: location.column,
             kind: "test",
-            modifier: call.only ? "only" : call.todo ? "todo" : "skip"
+              modifier: call.only ? "only" : call.todo ? "todo" : "skip"
           });
         }
-        tests.push(extractTest(callPath, args, testName, suiteStack, relativeFile, framework, skipped, call.only, call.todo));
+        const extracted = extractTest(
+          callPath,
+          args,
+          testName,
+          suiteStack,
+          relativeFile,
+          framework,
+          skipped,
+          call.only,
+          call.todo
+        );
+        tests.push(extracted.test);
+        isolationSignals.push(...extracted.isolationSignals);
       },
       exit(callPath: NodePath<t.CallExpression>) {
         const call = getCalleeInfo(callPath.node);
@@ -150,6 +183,7 @@ export async function analyzeFile(root: string, relativeFile: string, detectedFr
     tests,
     skippedBlocks,
     commentedOutTests,
+    isolationSignals,
     warnings
   };
 }
@@ -164,7 +198,7 @@ function extractTest(
   skipped: boolean,
   only: boolean,
   todo: boolean
-): TestCaseInfo {
+): { test: TestCaseInfo; isolationSignals: IsolationSignal[] } {
   const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
   const callbackPath = callbackIndex >= 0 ? callPath.get(`arguments.${callbackIndex}` as "arguments.0") : undefined;
   const metrics = {
@@ -172,7 +206,13 @@ function extractTest(
     hardcodedWaitCount: 0,
     timeDependentCount: 0,
     randomCount: 0,
-    externalHttpCount: 0
+    externalHttpCount: 0,
+    spyOnCount: 0,
+    mockRestoreCount: 0,
+    restoreAllMocksCount: 0,
+    moduleStateCount: 0,
+    globalMutationCount: 0,
+    mutatedDescribeVars: new Set<string>()
   };
 
   if (callbackPath && (callbackPath.isFunctionExpression() || callbackPath.isArrowFunctionExpression())) {
@@ -183,19 +223,36 @@ function extractTest(
         if (isHardcodedWait(innerPath.node)) metrics.hardcodedWaitCount += 1;
         if (isDateNow(innerPath.node)) metrics.timeDependentCount += 1;
         if (isRandom(innerPath.node)) metrics.randomCount += 1;
+        if (isJestSpyOn(innerPath.node)) metrics.spyOnCount += 1;
+        if (isMockRestore(innerPath.node)) metrics.mockRestoreCount += 1;
+        if (isRestoreAllMocks(innerPath.node)) metrics.restoreAllMocksCount += 1;
+        if (isModuleStateCall(innerPath.node)) metrics.moduleStateCount += 1;
       },
       NewExpression(innerPath) {
         if (t.isIdentifier(innerPath.node.callee, { name: "Date" })) metrics.timeDependentCount += 1;
       },
       StringLiteral(innerPath) {
         if (isExternalHttp(innerPath.node.value)) metrics.externalHttpCount += 1;
+      },
+      AssignmentExpression(innerPath) {
+        const mutableVars = collectMutableDescribeVars(suites);
+        for (const identifier of assignedIdentifiers(innerPath.node.left)) {
+          if (mutableVars.has(identifier)) metrics.mutatedDescribeVars.add(identifier);
+        }
+        if (isGlobalMutationTarget(innerPath.node.left)) metrics.globalMutationCount += 1;
+      },
+      UpdateExpression(innerPath) {
+        if (t.isIdentifier(innerPath.node.argument)) {
+          const mutableVars = collectMutableDescribeVars(suites);
+          if (mutableVars.has(innerPath.node.argument.name)) metrics.mutatedDescribeVars.add(innerPath.node.argument.name);
+        }
       }
     });
   }
 
   const location = locationOf(callPath.node);
   const fullName = [...suites.map((suite) => suite.name), name].join(" > ");
-  return {
+  const test: TestCaseInfo = {
     name,
     fullName,
     file,
@@ -214,6 +271,214 @@ function extractTest(
     randomCount: metrics.randomCount,
     externalHttpCount: metrics.externalHttpCount
   };
+  const isolationSignals = collectTestIsolationSignals(metrics, suites, test);
+  return { test, isolationSignals };
+}
+
+function collectSuiteSignals(
+  callPath: NodePath<t.CallExpression>,
+  args: t.CallExpression["arguments"],
+  file: string,
+  suiteName: string
+): SuiteSignalResult {
+  const result: SuiteSignalResult = {
+    mutableDescribeVars: new Set<string>(),
+    hasAfterEachCleanup: false,
+    hasAfterEachModuleCleanup: false,
+    signals: []
+  };
+  const callbackIndex = args.findIndex((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  const callback = callbackIndex >= 0 ? args[callbackIndex] : undefined;
+  if (!callback || (!t.isFunctionExpression(callback) && !t.isArrowFunctionExpression(callback))) return result;
+  if (!t.isBlockStatement(callback.body)) return result;
+
+  let beforeAllCount = 0;
+  let afterAllCount = 0;
+
+  for (const statement of callback.body.body) {
+    if (t.isVariableDeclaration(statement) && (statement.kind === "let" || statement.kind === "var")) {
+      for (const declaration of statement.declarations) {
+        for (const identifier of patternIdentifiers(declaration.id)) {
+          result.mutableDescribeVars.add(identifier);
+        }
+      }
+      continue;
+    }
+    const expression = expressionCall(statement);
+    if (!expression) continue;
+    const hook = hookName(expression);
+    if (!hook) continue;
+    if (hook === "beforeAll") {
+      beforeAllCount += 1;
+      continue;
+    }
+    if (hook === "afterAll") {
+      afterAllCount += 1;
+      continue;
+    }
+    if (hook === "afterEach") {
+      const hookBody = hookCallbackBody(expression.arguments);
+      if (!hookBody) continue;
+      const hookMetrics = analyzeCleanupCalls(hookBody);
+      if (hookMetrics.hasCleanup) result.hasAfterEachCleanup = true;
+      if (hookMetrics.hasModuleCleanup) result.hasAfterEachModuleCleanup = true;
+    }
+  }
+
+  if (beforeAllCount > 0 && afterAllCount === 0) {
+    const location = locationOf(callPath.node);
+    result.signals.push({
+      kind: "beforeall-no-afterall",
+      file,
+      line: location.line,
+      column: location.column,
+      suiteName,
+      evidence: "beforeAll() without matching afterAll()"
+    });
+  }
+
+  return result;
+}
+
+function collectTestIsolationSignals(
+  metrics: {
+    spyOnCount: number;
+    mockRestoreCount: number;
+    restoreAllMocksCount: number;
+    moduleStateCount: number;
+    globalMutationCount: number;
+    mutatedDescribeVars: Set<string>;
+  },
+  suites: SuiteContext[],
+  test: TestCaseInfo
+): IsolationSignal[] {
+  const signals: IsolationSignal[] = [];
+  const hasAfterEachCleanup = suites.some((suite) => suite.hasAfterEachCleanup);
+  const hasAfterEachModuleCleanup = suites.some((suite) => suite.hasAfterEachModuleCleanup || suite.hasAfterEachCleanup);
+
+  if (metrics.mutatedDescribeVars.size > 0) {
+    signals.push({
+      kind: "mutable-describe-var",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `mutates describe-scope var(s): ${[...metrics.mutatedDescribeVars].sort().join(", ")}`
+    });
+  }
+  if (
+    metrics.spyOnCount > 0 &&
+    metrics.mockRestoreCount === 0 &&
+    metrics.restoreAllMocksCount === 0 &&
+    !hasAfterEachCleanup
+  ) {
+    signals.push({
+      kind: "spy-no-restore",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.spyOnCount} spyOn call(s), no restore in test or afterEach`
+    });
+  }
+  if (metrics.globalMutationCount > 0 && !hasAfterEachCleanup) {
+    signals.push({
+      kind: "global-mutation",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.globalMutationCount} global assignment(s) without cleanup`
+    });
+  }
+  if (metrics.moduleStateCount > 0 && !hasAfterEachModuleCleanup) {
+    signals.push({
+      kind: "module-state",
+      file: test.file,
+      line: test.line,
+      column: test.column,
+      testName: test.fullName,
+      evidence: `${metrics.moduleStateCount} module-state call(s) without afterEach cleanup`
+    });
+  }
+  return signals;
+}
+
+function collectMutableDescribeVars(suites: SuiteContext[]): Set<string> {
+  const vars = new Set<string>();
+  for (const suite of suites) {
+    for (const name of suite.mutableDescribeVars) vars.add(name);
+  }
+  return vars;
+}
+
+function assignedIdentifiers(target: t.Node): string[] {
+  if (t.isIdentifier(target)) return [target.name];
+  if (t.isMemberExpression(target) || t.isOptionalMemberExpression(target)) return [];
+  if (t.isObjectPattern(target)) {
+    const values: string[] = [];
+    for (const property of target.properties) {
+      if (t.isRestElement(property)) values.push(...assignedIdentifiers(property.argument));
+      if (t.isObjectProperty(property)) values.push(...assignedIdentifiers(property.value));
+    }
+    return values;
+  }
+  if (t.isArrayPattern(target)) {
+    return target.elements.flatMap((element) => {
+      if (!element) return [];
+      if (t.isRestElement(element)) return assignedIdentifiers(element.argument);
+      return assignedIdentifiers(element);
+    });
+  }
+  if (t.isAssignmentPattern(target)) return assignedIdentifiers(target.left);
+  return [];
+}
+
+function patternIdentifiers(pattern: t.Node): string[] {
+  return assignedIdentifiers(pattern);
+}
+
+function expressionCall(statement: t.Statement): t.CallExpression | undefined {
+  if (!t.isExpressionStatement(statement) || !t.isCallExpression(statement.expression)) return undefined;
+  return statement.expression;
+}
+
+function hookName(call: t.CallExpression): "beforeAll" | "afterAll" | "afterEach" | "beforeEach" | undefined {
+  const parts = memberParts(t.isCallExpression(call.callee) ? call.callee.callee : call.callee);
+  const base = parts[0];
+  if (base === "beforeAll") return "beforeAll";
+  if (base === "afterAll") return "afterAll";
+  if (base === "afterEach") return "afterEach";
+  if (base === "beforeEach") return "beforeEach";
+  return undefined;
+}
+
+function hookCallbackBody(args: t.CallExpression["arguments"]): t.BlockStatement | undefined {
+  const callback = args.find((arg) => t.isFunctionExpression(arg) || t.isArrowFunctionExpression(arg));
+  if (!callback) return undefined;
+  if (t.isFunctionExpression(callback) || t.isArrowFunctionExpression(callback)) {
+    return t.isBlockStatement(callback.body) ? callback.body : undefined;
+  }
+  return undefined;
+}
+
+function analyzeCleanupCalls(body: t.BlockStatement): { hasCleanup: boolean; hasModuleCleanup: boolean } {
+  let hasCleanup = false;
+  let hasModuleCleanup = false;
+  traverseAst(
+    t.file(t.program(body.body)),
+    {
+      CallExpression(callPath) {
+        if (isMockRestore(callPath.node) || isRestoreAllMocks(callPath.node) || isClearOrResetAllMocks(callPath.node)) {
+          hasCleanup = true;
+        }
+        if (isModuleCleanupCall(callPath.node) || isClearOrResetAllMocks(callPath.node) || isRestoreAllMocks(callPath.node)) {
+          hasModuleCleanup = true;
+        }
+      }
+    }
+  );
+  return { hasCleanup, hasModuleCleanup };
 }
 
 function getCalleeInfo(node: t.CallExpression): CalleeInfo | undefined {
@@ -321,6 +586,39 @@ function isRandom(node: t.CallExpression): boolean {
   return memberParts(node.callee).join(".") === "Math.random";
 }
 
+function isJestSpyOn(node: t.CallExpression): boolean {
+  return memberParts(node.callee).join(".") === "jest.spyOn";
+}
+
+function isRestoreAllMocks(node: t.CallExpression): boolean {
+  return memberParts(node.callee).join(".") === "jest.restoreAllMocks";
+}
+
+function isClearOrResetAllMocks(node: t.CallExpression): boolean {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.clearAllMocks" || callee === "jest.resetAllMocks";
+}
+
+function isMockRestore(node: t.CallExpression): boolean {
+  return memberParts(node.callee).at(-1) === "mockRestore";
+}
+
+function isModuleStateCall(node: t.CallExpression): boolean {
+  const callee = memberParts(node.callee).join(".");
+  return callee === "jest.mock" || callee === "jest.resetModules";
+}
+
+function isModuleCleanupCall(node: t.CallExpression): boolean {
+  return memberParts(node.callee).join(".") === "jest.resetModules";
+}
+
+function isGlobalMutationTarget(node: t.Node): boolean {
+  if (!t.isMemberExpression(node) && !t.isOptionalMemberExpression(node)) return false;
+  const parts = memberParts(node);
+  if (parts[0] === "global" || parts[0] === "window") return true;
+  return parts[0] === "process" && parts[1] === "env";
+}
+
 function isExternalHttp(value: string): boolean {
   return /^https?:\/\//i.test(value) && !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(value);
 }
@@ -331,6 +629,9 @@ function memberParts(node: t.Node | null | undefined): string[] {
   if (t.isSuper(node) || t.isThisExpression(node)) return [];
   if (t.isCallExpression(node)) return memberParts(node.callee);
   if (t.isMemberExpression(node)) {
+    return [...memberParts(node.object), propertyName(node.property)].filter((part): part is string => Boolean(part));
+  }
+  if (t.isOptionalMemberExpression(node)) {
     return [...memberParts(node.object), propertyName(node.property)].filter((part): part is string => Boolean(part));
   }
   return [];

@@ -49,6 +49,7 @@ jobs:
         with:
           fail-below: C
           post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
+          track-history: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -60,12 +61,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add assertiq-badge.svg
-          git diff --cached --quiet || git commit -m "chore(ci): update AssertIQ badge"
+          git add assertiq-badge.svg assertiq-history.json
+          git diff --cached --quiet || git commit -m "chore(ci): update AssertIQ badge and history"
           git push
 ```
 
 `post-comment` needs `issues: write`. On `pull_request` runs from forks (and Dependabot PRs), `GITHUB_TOKEN` is usually read-only, so comment posting may be skipped. Keep `post-comment` conditional as above, or use a hardened `pull_request_target` comment-only workflow.
+`track-history` writes `assertiq-history.json` only on `push` to `main` when enabled.
 
 When `v1` is released, switch `mov2day/assertiq@v0` to `mov2day/assertiq@v1` to track the latest `v1.x`.
 
@@ -81,6 +83,10 @@ The workflow above writes `assertiq-badge.svg` on `main`.
 ![AssertIQ](./assertiq-badge.svg)
 ```
 
+## Trend History
+
+When `track-history` is enabled in GitHub Action, AssertIQ appends a snapshot to `assertiq-history.json` (capped at last 90 entries). Reports show score movement and trend sparkline from this file.
+
 ## Dimensions
 
-AssertIQ scores Assertion Quality, Flakiness Risk, Naming Clarity, Coverage Balance, and Dead Test Risk. Findings are static risk signals, not proof that a test is broken.
+AssertIQ scores Assertion Quality, Flakiness Risk, Isolation Risk, Naming Clarity, Coverage Balance, and Dead Test Risk. Findings are static risk signals, not proof that a test is broken.

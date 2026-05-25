@@ -26,7 +26,7 @@ const program = new Command()
   .option("--badge", "write assertiq-badge.svg")
   .option("--json", "print JSON report")
   .option("--fail-below <grade>", "exit 1 if overall grade is below A, B, C, D, or F", parseThreshold)
-  .version("0.1.0");
+  .version("0.2.0");
 
 program.parse(process.argv);
 

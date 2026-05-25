@@ -1,5 +1,5 @@
 import { stableIssueId } from "./scoring.js";
-import type { DimensionId, FileAnalysis, Issue, Severity, TestCaseInfo } from "./types.js";
+import type { DimensionId, FileAnalysis, IsolationSignal, Issue, Severity, TestCaseInfo } from "./types.js";
 
 const VAGUE_NAME = /^(test\d*|testfoo|foo|bar|baz|works|should work|does stuff|stuff|happy path)$/i;
 const BEHAVIOR_WORD =
@@ -46,6 +46,9 @@ export function runRules(files: FileAnalysis[]): Issue[] {
         column: 0,
         evidence: commented.evidence
       });
+    }
+    for (const signal of file.isolationSignals) {
+      applyIsolationSignal(signal, issues);
     }
   }
   return issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId));
@@ -202,6 +205,81 @@ function deadTestRisk(test: TestCaseInfo, issues: Issue[]) {
       evidence: "only modifier"
     });
   }
+}
+
+function applyIsolationSignal(signal: IsolationSignal, issues: Issue[]) {
+  if (signal.kind === "mutable-describe-var") {
+    const testMeta = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-mutable-describe-var",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Describe-scope mutable variable is mutated inside a test.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "beforeall-no-afterall") {
+    const suiteMeta = signal.suiteName ? { testName: signal.suiteName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-beforeall-no-afterall",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "Suite uses beforeAll without a matching afterAll cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...suiteMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "spy-no-restore") {
+    const testMeta = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-spy-no-restore",
+      dimension: "isolation-risk",
+      severity: "high",
+      message: "spyOn is used without restoring mocks in test or afterEach.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  if (signal.kind === "global-mutation") {
+    const testMeta = signal.testName ? { testName: signal.testName } : {};
+    pushIssue(issues, {
+      ruleId: "isolation-global-mutation",
+      dimension: "isolation-risk",
+      severity: "medium",
+      message: "Global state is mutated inside a test without cleanup.",
+      file: signal.file,
+      line: signal.line,
+      column: signal.column,
+      ...testMeta,
+      evidence: signal.evidence
+    });
+    return;
+  }
+  const testMeta = signal.testName ? { testName: signal.testName } : {};
+  pushIssue(issues, {
+    ruleId: "isolation-module-state",
+    dimension: "isolation-risk",
+    severity: "low",
+    message: "Module state is mocked/reset in test without afterEach cleanup.",
+    file: signal.file,
+    line: signal.line,
+    column: signal.column,
+    ...testMeta,
+    evidence: signal.evidence
+  });
 }
 
 function pushTestIssue(

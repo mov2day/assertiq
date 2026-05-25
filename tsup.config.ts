@@ -1,6 +1,6 @@
-import { defineConfig } from "tsup";
+import { defineConfig, type Options } from "tsup";
 
-const shared = {
+const shared: Options = {
   platform: "node",
   target: "node22",
   outDir: "dist",

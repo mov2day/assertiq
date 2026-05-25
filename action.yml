@@ -21,6 +21,10 @@ inputs:
     description: Post or update a sticky pull request comment.
     required: false
     default: "true"
+  track-history:
+    description: On push to main, append the latest score snapshot to assertiq-history.json.
+    required: false
+    default: "false"
   github-token:
     description: GitHub token used to post pull request comments.
     required: false

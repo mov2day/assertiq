@@ -12,8 +12,10 @@ import {
   getActionInput,
   setActionFailed,
   setActionOutput,
+  shouldWriteHistoryForAction,
   splitActionInput
 } from "./action-utils.js";
+import { buildHistoryEntry, writeHistory } from "./history.js";
 import { COMMENT_MARKER, renderMarkdownComment } from "./reporters/markdown.js";
 import { failsThreshold } from "./scoring.js";
 import type { AssertIQReport, Issue } from "./types.js";
@@ -23,6 +25,7 @@ async function run(): Promise<void> {
   const ignore = splitActionInput(getActionInput("ignore"));
   const failBelow = getActionInput("fail-below") || undefined;
   const postComment = (getActionInput("post-comment") || "true").toLowerCase() !== "false";
+  const trackHistory = (getActionInput("track-history") || "false").toLowerCase() === "true";
   const token = getActionInput("github-token") || process.env.GITHUB_TOKEN || "";
   const paths = resolveActionPaths(dirInput);
 
@@ -41,6 +44,14 @@ async function run(): Promise<void> {
       });
       if (baseReport) newIssues = diffIssues(baseReport, headReport);
     }
+  }
+
+  if (
+    shouldWriteHistoryForAction(trackHistory, github.context.eventName, process.env.GITHUB_REF ?? "")
+  ) {
+    const sha = process.env.GITHUB_SHA ?? "unknown";
+    const writeResult = await writeHistory(paths.headRoot, buildHistoryEntry(headReport, sha));
+    for (const warning of writeResult.warnings) actionWarning(warning);
   }
 
   setActionOutput("score", String(headReport.summary.score));
