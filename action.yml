@@ -1,6 +1,9 @@
-name: AssertIQ
+name: AssertIQ by Mov2Day
 description: Static test intelligence and report cards for JavaScript and TypeScript test suites.
 author: Muthu Kumar Koodalingam
+branding:
+  icon: award
+  color: blue
 inputs:
   dir:
     description: Path to scan.
