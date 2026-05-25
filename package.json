@@ -1,5 +1,5 @@
 {
-  "name": "assertiq",
+  "name": "@mov2day/assertiq",
   "version": "0.1.0",
   "description": "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
   "type": "module",
@@ -40,6 +40,9 @@
     "mocha"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mov2day/assertiq.git"

@@ -883,7 +883,7 @@ function renderTerminalReport(report) {
     lines.push("", pc.yellow("Warnings:"));
     for (const warning of report.warnings) lines.push(`  - ${warning}`);
   }
-  lines.push("", "HTML:   npx assertiq --html", "Badge:  npx assertiq --badge");
+  lines.push("", "HTML:   npx @mov2day/assertiq --html", "Badge:  npx @mov2day/assertiq --badge");
   return `${lines.join("\n")}
 `;
 }

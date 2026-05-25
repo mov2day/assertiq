@@ -3,9 +3,9 @@
 Static test intelligence and report cards for JavaScript and TypeScript test suites.
 
 ```sh
-npx assertiq
-npx assertiq --html
-npx assertiq --badge
+npx @mov2day/assertiq
+npx @mov2day/assertiq --html
+npx @mov2day/assertiq --badge
 ```
 
 AssertIQ parses test files only. It does not execute tests or need project-specific config.
