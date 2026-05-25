@@ -66,7 +66,22 @@ describe("action comments", () => {
     const ok = await safeUpsertStickyComment(api, CONTEXT, MARKER, "body", warning);
     expect(ok).toBe(false);
     expect(warning).toHaveBeenCalledWith(
-      "Could not post AssertIQ PR comment: Resource not accessible by integration"
+      "Could not post AssertIQ PR comment: Resource not accessible by integration. " +
+        "Check workflow token permissions (`issues: write`). For forked `pull_request` runs, " +
+        "`GITHUB_TOKEN` is read-only; disable comments for forks or use a hardened `pull_request_target` " +
+        "comment-only workflow."
     );
+  });
+
+  it("passes through non-permission failures in warning callback", async () => {
+    const api: StickyCommentApi = {
+      listComments: vi.fn().mockResolvedValue({ data: [] }),
+      updateComment: vi.fn().mockResolvedValue({}),
+      createComment: vi.fn().mockRejectedValue(new Error("socket hang up"))
+    };
+    const warning = vi.fn();
+    const ok = await safeUpsertStickyComment(api, CONTEXT, MARKER, "body", warning);
+    expect(ok).toBe(false);
+    expect(warning).toHaveBeenCalledWith("Could not post AssertIQ PR comment: socket hang up");
   });
 });

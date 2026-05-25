@@ -73128,7 +73128,14 @@ async function safeUpsertStickyComment(api, context3, marker, body, onWarning) {
     await upsertStickyComment(api, context3, marker, body);
     return true;
   } catch (error) {
-    onWarning(`Could not post AssertIQ PR comment: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("Resource not accessible by integration")) {
+      onWarning(
+        "Could not post AssertIQ PR comment: Resource not accessible by integration. Check workflow token permissions (`issues: write`). For forked `pull_request` runs, `GITHUB_TOKEN` is read-only; disable comments for forks or use a hardened `pull_request_target` comment-only workflow."
+      );
+      return false;
+    }
+    onWarning(`Could not post AssertIQ PR comment: ${message}`);
     return false;
   }
 }
