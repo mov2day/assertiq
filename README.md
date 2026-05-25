@@ -1,2 +1,55 @@
-# whiff
-catch the smell before code review does
+# AssertIQ
+
+Static test intelligence and report cards for JavaScript and TypeScript test suites.
+
+```sh
+npx assertiq
+npx assertiq --html
+npx assertiq --badge
+```
+
+AssertIQ parses test files only. It does not execute tests or need project-specific config.
+
+## CLI
+
+```text
+--dir <path>          Path to scan. Default: .
+--ignore <glob>      Glob pattern to exclude. Repeatable.
+--html               Write assertiq-report.html.
+--badge              Write assertiq-badge.svg.
+--json               Print machine-readable JSON.
+--fail-below <grade> Exit 1 below A, B, C, D, or F.
+```
+
+## GitHub Action
+
+```yaml
+name: Test Intelligence
+on: [pull_request]
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  assertiq:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: mov2day/assertiq@v1
+        with:
+          fail-below: C
+          post-comment: true
+```
+
+## Badge
+
+```md
+![AssertIQ](./assertiq-badge.svg)
+```
+
+## Dimensions
+
+AssertIQ scores Assertion Quality, Flakiness Risk, Naming Clarity, Coverage Balance, and Dead Test Risk. Findings are static risk signals, not proof that a test is broken.

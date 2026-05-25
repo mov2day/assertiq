@@ -1,0 +1,34 @@
+name: AssertIQ
+description: Static test intelligence and report cards for JavaScript and TypeScript test suites.
+author: Muthu Kumar Koodalingam
+inputs:
+  dir:
+    description: Path to scan.
+    required: false
+    default: "."
+  ignore:
+    description: Newline-separated glob patterns to ignore.
+    required: false
+    default: ""
+  fail-below:
+    description: Minimum overall grade. One of A, B, C, D, F.
+    required: false
+    default: ""
+  post-comment:
+    description: Post or update a sticky pull request comment.
+    required: false
+    default: "true"
+  github-token:
+    description: GitHub token used to post pull request comments.
+    required: false
+    default: "${{ github.token }}"
+outputs:
+  score:
+    description: Overall numeric score.
+  grade:
+    description: Overall letter grade.
+  json:
+    description: Full AssertIQ JSON report.
+runs:
+  using: node24
+  main: dist/action.js

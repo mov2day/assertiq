@@ -1,0 +1,49 @@
+import path from "node:path";
+import { TOOL_VERSION } from "./constants.js";
+import { analyzeFile } from "./parser.js";
+import { runRules } from "./rules.js";
+import { scanProject } from "./scanner.js";
+import { gradeForScore, overallScore, scoreDimensions } from "./scoring.js";
+import type { AnalyzeOptions, AssertIQReport, Framework } from "./types.js";
+
+export async function analyzeProject(options: AnalyzeOptions = {}): Promise<AssertIQReport> {
+  const root = path.resolve(options.root ?? ".");
+  const scan = await scanProject(root, options.ignore ?? []);
+  const files = await Promise.all(scan.files.map((file) => analyzeFile(root, file, scan.frameworks)));
+  const issues = runRules(files);
+  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings)];
+  const testCount = files.reduce((sum, file) => sum + file.testCount, 0);
+  const frameworks = uniqueFrameworks([
+    ...scan.frameworks,
+    ...files.map((file) => file.framework)
+  ]);
+
+  if (scan.files.length === 0) warnings.push("No test files found.");
+  if (testCount === 0) warnings.push("No tests detected.");
+
+  const dimensions = scoreDimensions(issues, testCount);
+  const score = testCount === 0 ? 0 : overallScore(dimensions);
+
+  return {
+    tool: "assertiq",
+    version: TOOL_VERSION,
+    project: scan.projectName,
+    root,
+    summary: {
+      score,
+      grade: gradeForScore(score),
+      testFiles: scan.files.length,
+      tests: testCount,
+      issues: issues.length,
+      frameworks,
+    },
+    dimensions,
+    issues,
+    warnings
+  };
+}
+
+function uniqueFrameworks(frameworks: Framework[]): Framework[] {
+  const clean = frameworks.filter((framework) => framework !== "unknown");
+  return [...new Set(clean)].sort();
+}
