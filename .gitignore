@@ -5,3 +5,5 @@ coverage/
 *.log
 docs/assertiq-report.html
 docs/assertiq-badge.svg
+docs/assertiq_logo.svg
+docs/test_smell_report_card_techdoc.html
