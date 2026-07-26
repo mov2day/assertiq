@@ -1,4 +1,7 @@
 import { stableIssueId } from "./scoring.js";
+import { metadataForRule } from "./remediation.js";
+import { applyConfig } from "./config.js";
+import type { AssertIQConfig } from "./config.js";
 import type { DimensionId, FileAnalysis, IsolationSignal, Issue, Severity, TestCaseInfo } from "./types.js";
 
 const VAGUE_NAME = /^(test\d*|testfoo|foo|bar|baz|works|should work|does stuff|stuff|happy path)$/i;
@@ -7,7 +10,11 @@ const BEHAVIOR_WORD =
 const NEGATIVE_OR_EDGE =
   /\b(error|errors|throw|throws|reject|rejects|fail|fails|invalid|empty|null|undefined|edge|boundary|missing|not found|timeout|denied|unauthorized|forbidden|malformed)\b/i;
 
-export function runRules(files: FileAnalysis[]): Issue[] {
+export function runRules(files: FileAnalysis[], config: AssertIQConfig = {}): Issue[] {
+  return runRulesWithStats(files, config).issues;
+}
+
+export function runRulesWithStats(files: FileAnalysis[], config: AssertIQConfig = {}): { issues: Issue[]; suppressed: number } {
   const issues: Issue[] = [];
   for (const file of files) {
     for (const test of file.tests) {
@@ -51,7 +58,11 @@ export function runRules(files: FileAnalysis[]): Issue[] {
       applyIsolationSignal(signal, issues);
     }
   }
-  return issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId));
+  const configured = applyConfig(issues, config);
+  return {
+    issues: configured.issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId)),
+    suppressed: configured.suppressed
+  };
 }
 
 function assertionQuality(test: TestCaseInfo, issues: Issue[]) {
@@ -304,8 +315,12 @@ function pushTestIssue(
 }
 
 function pushIssue(issues: Issue[], issue: Omit<Issue, "id">) {
+  const metadata = metadataForRule(issue.ruleId);
   issues.push({
     ...issue,
+    remediation: metadata.remediation,
+    ...(metadata.example ? { remediationExample: metadata.example } : {}),
+    ...(metadata.documentationUrl ? { documentationUrl: metadata.documentationUrl } : {}),
     id: stableIssueId(issue)
   });
 }

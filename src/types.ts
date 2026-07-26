@@ -109,6 +109,9 @@ export interface Issue {
   column: number;
   testName?: string;
   evidence: string;
+  remediation?: string;
+  remediationExample?: string;
+  documentationUrl?: string;
 }
 
 export interface DimensionScore {
@@ -141,6 +144,7 @@ export interface HistoryEntry {
   score: number;
   grade: string;
   dimensions: HistoryDimensionEntry[];
+  ruleCounts?: Record<string, number>;
 }
 
 export interface DimensionDelta {

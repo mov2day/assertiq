@@ -19,6 +19,13 @@ AssertIQ parses test files only. It does not execute tests or need project-speci
 --badge              Write assertiq-badge.svg.
 --json               Print machine-readable JSON.
 --fail-below <grade> Exit 1 below A, B, C, D, or F.
+--fail-on-new <severity> Fail on new issues at low, medium, or high (requires --baseline).
+--max-new-issues <count> Maximum allowed issues after severity filtering.
+--baseline <path>    Previous AssertIQ JSON report for new-risk comparisons.
+--sarif              Write assertiq-results.sarif.
+--sarif-output <path> Custom SARIF output path.
+--dashboard          Write assertiq-dashboard.html.
+--dashboard-output <path> Custom dashboard output path.
 ```
 
 ## GitHub Action
@@ -37,6 +44,7 @@ permissions:
   contents: write
   pull-requests: read
   issues: write
+  security-events: write
 
 jobs:
   assertiq:
@@ -48,6 +56,10 @@ jobs:
       - uses: mov2day/assertiq@v0
         with:
           fail-below: C
+          fail-on-new: high
+          max-new-issues: 0
+          sarif: true
+          upload-sarif: true
           post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
           track-history: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - uses: actions/setup-node@v4
@@ -68,6 +80,32 @@ jobs:
 
 `post-comment` needs `issues: write`. On `pull_request` runs from forks (and Dependabot PRs), `GITHUB_TOKEN` is usually read-only, so comment posting may be skipped. Keep `post-comment` conditional as above, or use a hardened `pull_request_target` comment-only workflow.
 `track-history` writes `assertiq-history.json` only on `push` to `main` when enabled.
+
+## Configuration and suppressions
+
+Create `assertiq.config.json` to tune rules or suppress intentional findings:
+
+```json
+{
+  "rules": {
+    "assertion-zero": "error",
+    "naming-no-behavior-signal": "off"
+  },
+  "ignoreRules": ["coverage-single-test-file"],
+  "suppressions": [
+    {
+      "fingerprint": "rule|dimension|file||message|evidence",
+      "reason": "Intentional contract test."
+    }
+  ]
+}
+```
+
+Rules support `off`, `warn`, and `error`. Suppressed findings do not affect scores, gates, reports, or SARIF. Every finding includes suggested remediation in supported reports.
+
+For local new-risk gates, first save a baseline with `assertiq --json > assertiq-baseline.json`, then run `assertiq --baseline assertiq-baseline.json --fail-on-new high`. GitHub Action pull-request runs create this comparison from the PR base automatically.
+
+Use `npx @mov2day/assertiq --dashboard` to generate the self-contained `assertiq-dashboard.html`. It includes score and dimension trends, current risks, and historical rule counts from `assertiq-history.json`.
 
 When `v1` is released, switch `mov2day/assertiq@v0` to `mov2day/assertiq@v1` to track the latest `v1.x`.
 

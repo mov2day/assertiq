@@ -1,5 +1,5 @@
 // src/analyze.ts
-import path4 from "path";
+import path5 from "path";
 
 // package.json
 var package_default = {
@@ -154,7 +154,11 @@ function buildHistoryEntry(report, sha, date = (/* @__PURE__ */ new Date()).toIS
       id: dimension.id,
       score: dimension.score,
       grade: dimension.grade
-    }))
+    })),
+    ruleCounts: report.issues.reduce((counts, issue) => {
+      counts[issue.ruleId] = (counts[issue.ruleId] ?? 0) + 1;
+      return counts;
+    }, {})
   };
 }
 function computeScoreDelta(previous, report) {
@@ -176,16 +180,147 @@ function isHistoryEntry(value) {
   );
 }
 
+// src/config.ts
+import fs2 from "fs/promises";
+import path2 from "path";
+
+// src/scoring.ts
+import { createHash } from "crypto";
+var SEVERITY_WEIGHT = {
+  low: 3,
+  medium: 6,
+  high: 10
+};
+function gradeForScore(score) {
+  const rounded = Math.max(0, Math.min(100, Math.round(score)));
+  if (rounded >= 90) return modifierGrade("A", rounded, 90, 100);
+  if (rounded >= 75) return modifierGrade("B", rounded, 75, 89);
+  if (rounded >= 60) return modifierGrade("C", rounded, 60, 74);
+  if (rounded >= 45) return modifierGrade("D", rounded, 45, 59);
+  return "F";
+}
+function failsThreshold(score, threshold) {
+  if (!threshold) return false;
+  const normalized = threshold.toUpperCase();
+  if (!isThreshold(normalized)) {
+    throw new Error(`Invalid threshold "${threshold}". Use A, B, C, D, or F.`);
+  }
+  return score < GRADE_FLOORS[normalized];
+}
+function scoreDimensions(issues, testCount) {
+  return DIMENSIONS.map((dimension) => {
+    const dimensionIssues = issues.filter((issue) => issue.dimension === dimension.id);
+    const score = testCount === 0 ? 0 : scoreDimension(dimension.id, dimensionIssues, testCount);
+    return {
+      ...dimension,
+      score,
+      grade: gradeForScore(score),
+      issueCount: dimensionIssues.length
+    };
+  });
+}
+function overallScore(dimensions) {
+  const total = dimensions.reduce((sum, dimension) => sum + dimension.score * dimension.weight, 0);
+  return Math.round(total);
+}
+function stableIssueId(issue) {
+  return createHash("sha1").update(`${issue.ruleId}|${issue.file}|${issue.line}|${issue.testName ?? ""}|${issue.evidence}`).digest("hex").slice(0, 12);
+}
+function issueFingerprint(issue) {
+  return [
+    issue.ruleId,
+    issue.dimension,
+    issue.file,
+    issue.testName ?? "",
+    issue.message,
+    issue.evidence
+  ].join("|");
+}
+function scoreDimension(_dimension, issues, testCount) {
+  const penalty = issues.reduce((sum, issue) => sum + SEVERITY_WEIGHT[issue.severity], 0);
+  const denominator = Math.max(3, testCount);
+  return Math.max(0, Math.round(100 - penalty / denominator * 10));
+}
+function modifierGrade(base, score, low, high) {
+  if (score <= low + 2) return `${base}-`;
+  if (score >= high - 2) return `${base}+`;
+  return base;
+}
+function isThreshold(value) {
+  return value === "A" || value === "B" || value === "C" || value === "D" || value === "F";
+}
+
+// src/config.ts
+async function readConfig(root) {
+  const configPath = path2.join(root, "assertiq.config.json");
+  try {
+    const raw = JSON.parse(await fs2.readFile(configPath, "utf8"));
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { config: {}, warnings: ["assertiq.config.json: expected a JSON object, ignoring config file."] };
+    }
+    const config = raw;
+    const warnings = [];
+    if (config.rules && (typeof config.rules !== "object" || Array.isArray(config.rules))) {
+      warnings.push("assertiq.config.json: rules must be an object.");
+      delete config.rules;
+    }
+    for (const [ruleId, mode] of Object.entries(config.rules ?? {})) {
+      if (mode !== "off" && mode !== "warn" && mode !== "error") {
+        warnings.push(`assertiq.config.json: invalid mode for rule ${ruleId}.`);
+      }
+    }
+    if (config.ignoreRules && !Array.isArray(config.ignoreRules)) {
+      warnings.push("assertiq.config.json: ignoreRules must be an array.");
+      delete config.ignoreRules;
+    }
+    if (config.suppressions && !Array.isArray(config.suppressions)) {
+      warnings.push("assertiq.config.json: suppressions must be an array.");
+      delete config.suppressions;
+    }
+    const suppressions = config.suppressions ?? [];
+    for (const suppression of suppressions) {
+      if (!suppression || typeof suppression.fingerprint !== "string" || !suppression.fingerprint.trim()) {
+        warnings.push("assertiq.config.json: every suppression needs a fingerprint.");
+      }
+    }
+    return { config, warnings };
+  } catch (error) {
+    const nodeError = error;
+    if (nodeError.code === "ENOENT") return { config: {}, warnings: [] };
+    if (nodeError.name === "SyntaxError") {
+      return { config: {}, warnings: ["assertiq.config.json: invalid JSON, ignoring config file."] };
+    }
+    return { config: {}, warnings: [`assertiq.config.json: ${nodeError.message}`] };
+  }
+}
+function applyConfig(issues, config) {
+  const ignoredRules = /* @__PURE__ */ new Set([...config.ignoreRules ?? [], ...Object.entries(config.rules ?? {}).filter(([, mode]) => mode === "off").map(([ruleId]) => ruleId)]);
+  const suppressedFingerprints = new Set(
+    (config.suppressions ?? []).filter((item) => item && typeof item.fingerprint === "string").map((item) => item.fingerprint)
+  );
+  let suppressed = 0;
+  const active = issues.flatMap((issue) => {
+    if (ignoredRules.has(issue.ruleId) || suppressedFingerprints.has(issueFingerprint(issue))) {
+      suppressed += 1;
+      return [];
+    }
+    const mode = config.rules?.[issue.ruleId];
+    if (mode === "warn") return [{ ...issue, severity: "low" }];
+    return [issue];
+  });
+  return { issues: active, suppressed };
+}
+
 // src/parser.ts
-import fs3 from "fs/promises";
-import path3 from "path";
+import fs4 from "fs/promises";
+import path4 from "path";
 import { parse } from "@babel/parser";
 import traverseModule from "@babel/traverse";
 import * as t from "@babel/types";
 
 // src/scanner.ts
-import fs2 from "fs/promises";
-import path2 from "path";
+import fs3 from "fs/promises";
+import path3 from "path";
 import fg from "fast-glob";
 var TEST_GLOBS = [
   "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
@@ -196,7 +331,7 @@ var TEST_GLOBS = [
   "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
 ];
 async function scanProject(rootInput = ".", ignore = []) {
-  const root = path2.resolve(rootInput);
+  const root = path3.resolve(rootInput);
   const warnings = [];
   const project = await readProject(root, warnings);
   const files = await fg(TEST_GLOBS, {
@@ -228,12 +363,12 @@ function frameworkFromPath(file2) {
   return "unknown";
 }
 function toPosix(file2) {
-  return file2.split(path2.sep).join("/");
+  return file2.split(path3.sep).join("/");
 }
 async function readProject(root, warnings) {
-  const packagePath = path2.join(root, "package.json");
+  const packagePath = path3.join(root, "package.json");
   try {
-    const raw = await fs2.readFile(packagePath, "utf8");
+    const raw = await fs3.readFile(packagePath, "utf8");
     const pkg = JSON.parse(raw);
     const deps = {
       ...pkg.dependencies,
@@ -241,14 +376,14 @@ async function readProject(root, warnings) {
       ...pkg.peerDependencies
     };
     return {
-      name: pkg.name ?? path2.basename(root),
+      name: pkg.name ?? path3.basename(root),
       frameworks: detectFrameworks(deps)
     };
   } catch (error) {
     if (error.code !== "ENOENT") {
       warnings.push(`Could not read package.json: ${error.message}`);
     }
-    return { name: path2.basename(root), frameworks: [] };
+    return { name: path3.basename(root), frameworks: [] };
   }
 }
 function detectFrameworks(deps) {
@@ -285,8 +420,8 @@ var STRUCTURE_MATCHERS = /* @__PURE__ */ new Set([
 var SNAPSHOT_MATCHERS = /* @__PURE__ */ new Set(["toMatchSnapshot", "toMatchInlineSnapshot", "toThrowErrorMatchingSnapshot"]);
 var traverseAst = traverseModule.default ?? traverseModule;
 async function analyzeFile(root, relativeFile, detectedFrameworks) {
-  const absoluteFile = path3.join(root, relativeFile);
-  const source = await fs3.readFile(absoluteFile, "utf8");
+  const absoluteFile = path4.join(root, relativeFile);
+  const source = await fs4.readFile(absoluteFile, "utf8");
   const pathFramework = frameworkFromPath(relativeFile);
   const framework = pathFramework === "unknown" ? detectedFrameworks[0] ?? "unknown" : pathFramework;
   const commentedOutTests = findCommentedOutTests(source, relativeFile);
@@ -807,77 +942,40 @@ function findCommentedOutTests(source, file2) {
   return results;
 }
 
-// src/scoring.ts
-import { createHash } from "crypto";
-var SEVERITY_WEIGHT = {
-  low: 3,
-  medium: 6,
-  high: 10
+// src/remediation.ts
+var generic = (remediation) => ({ title: "Test quality risk", remediation });
+var RULE_METADATA = {
+  "assertion-zero": { title: "Missing assertion", remediation: "Add an assertion that verifies the behavior this test is intended to protect." },
+  "assertion-weak-single": { title: "Weak assertion", remediation: "Replace the generic assertion with a specific value, state, or behavior assertion." },
+  "assertion-snapshot-only": { title: "Snapshot-only assertion", remediation: "Pair the snapshot with focused assertions for the important behavior and values." },
+  "assertion-structure-only": { title: "Structure-only assertion", remediation: "Assert meaningful values or behavior in addition to the object shape." },
+  "flaky-hardcoded-wait": { title: "Hardcoded wait", remediation: "Wait for a deterministic condition, event, or locator instead of sleeping for a fixed duration." },
+  "flaky-time-dependent": { title: "Wall-clock dependency", remediation: "Inject or fake the clock so the test does not depend on the current time." },
+  "flaky-random-dependent": { title: "Random dependency", remediation: "Seed or inject randomness so failures can be reproduced reliably." },
+  "flaky-external-http": { title: "External network dependency", remediation: "Mock the external service or route the request to a deterministic test server." },
+  "naming-vague": { title: "Vague test name", remediation: "Name the test with the scenario and expected behavior it verifies." },
+  "naming-no-behavior-signal": { title: "Weak behavior signal", remediation: "Include the condition and expected outcome in the test name." },
+  "coverage-single-test-file": { title: "Thin test file", remediation: "Add coverage for the important branches, errors, and boundary conditions." },
+  "coverage-happy-path-only": { title: "Happy-path-only coverage", remediation: "Add at least one error, invalid-state, or edge-case test." },
+  "dead-skipped-test": { title: "Skipped test", remediation: "Restore the test, replace it with current coverage, or remove it with an explicit decision." },
+  "dead-focused-test": { title: "Focused test", remediation: "Remove the only modifier so the complete suite runs in CI." },
+  "dead-skipped-block": { title: "Skipped block", remediation: "Restore the suite or remove the stale skipped block." },
+  "dead-commented-test": { title: "Commented-out test", remediation: "Delete the dead code or restore it as an active test." },
+  "isolation-mutable-describe-var": { title: "Mutable suite state", remediation: "Create test-local state or reset the shared variable before each test." },
+  "isolation-beforeall-no-afterall": { title: "Missing suite cleanup", remediation: "Add matching afterAll cleanup for resources created in beforeAll." },
+  "isolation-spy-no-restore": { title: "Unrestored spy", remediation: "Restore the spy in afterEach or enable automatic mock restoration." },
+  "isolation-global-mutation": { title: "Global mutation", remediation: "Restore the global value in cleanup or isolate the mutation behind a test helper." },
+  "isolation-module-state": { title: "Module state leakage", remediation: "Reset module and mock state in afterEach or before the next test." }
 };
-function gradeForScore(score) {
-  const rounded = Math.max(0, Math.min(100, Math.round(score)));
-  if (rounded >= 90) return modifierGrade("A", rounded, 90, 100);
-  if (rounded >= 75) return modifierGrade("B", rounded, 75, 89);
-  if (rounded >= 60) return modifierGrade("C", rounded, 60, 74);
-  if (rounded >= 45) return modifierGrade("D", rounded, 45, 59);
-  return "F";
-}
-function failsThreshold(score, threshold) {
-  if (!threshold) return false;
-  const normalized = threshold.toUpperCase();
-  if (!isThreshold(normalized)) {
-    throw new Error(`Invalid threshold "${threshold}". Use A, B, C, D, or F.`);
-  }
-  return score < GRADE_FLOORS[normalized];
-}
-function scoreDimensions(issues, testCount) {
-  return DIMENSIONS.map((dimension) => {
-    const dimensionIssues = issues.filter((issue) => issue.dimension === dimension.id);
-    const score = testCount === 0 ? 0 : scoreDimension(dimension.id, dimensionIssues, testCount);
-    return {
-      ...dimension,
-      score,
-      grade: gradeForScore(score),
-      issueCount: dimensionIssues.length
-    };
-  });
-}
-function overallScore(dimensions) {
-  const total = dimensions.reduce((sum, dimension) => sum + dimension.score * dimension.weight, 0);
-  return Math.round(total);
-}
-function stableIssueId(issue) {
-  return createHash("sha1").update(`${issue.ruleId}|${issue.file}|${issue.line}|${issue.testName ?? ""}|${issue.evidence}`).digest("hex").slice(0, 12);
-}
-function issueFingerprint(issue) {
-  return [
-    issue.ruleId,
-    issue.dimension,
-    issue.file,
-    issue.testName ?? "",
-    issue.message,
-    issue.evidence
-  ].join("|");
-}
-function scoreDimension(_dimension, issues, testCount) {
-  const penalty = issues.reduce((sum, issue) => sum + SEVERITY_WEIGHT[issue.severity], 0);
-  const denominator = Math.max(3, testCount);
-  return Math.max(0, Math.round(100 - penalty / denominator * 10));
-}
-function modifierGrade(base, score, low, high) {
-  if (score <= low + 2) return `${base}-`;
-  if (score >= high - 2) return `${base}+`;
-  return base;
-}
-function isThreshold(value) {
-  return value === "A" || value === "B" || value === "C" || value === "D" || value === "F";
+function metadataForRule(ruleId) {
+  return RULE_METADATA[ruleId] ?? generic("Review this finding and make the test deterministic, isolated, and behavior-focused.");
 }
 
 // src/rules.ts
 var VAGUE_NAME = /^(test\d*|testfoo|foo|bar|baz|works|should work|does stuff|stuff|happy path)$/i;
 var BEHAVIOR_WORD = /\b(should|when|given|then|returns?|throws?|rejects?|resolves?|handles?|renders?|creates?|updates?|deletes?|allows?|prevents?|fails?|errors?|invalid|valid|empty|null|undefined|edge|timeout|retry|loads?|saves?|shows?|hides?)\b/i;
 var NEGATIVE_OR_EDGE = /\b(error|errors|throw|throws|reject|rejects|fail|fails|invalid|empty|null|undefined|edge|boundary|missing|not found|timeout|denied|unauthorized|forbidden|malformed)\b/i;
-function runRules(files) {
+function runRulesWithStats(files, config = {}) {
   const issues = [];
   for (const file2 of files) {
     for (const test of file2.tests) {
@@ -918,7 +1016,11 @@ function runRules(files) {
       applyIsolationSignal(signal, issues);
     }
   }
-  return issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId));
+  const configured = applyConfig(issues, config);
+  return {
+    issues: configured.issues.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.ruleId.localeCompare(b.ruleId)),
+    suppressed: configured.suppressed
+  };
 }
 function assertionQuality(test, issues) {
   if (test.skipped || test.todo) return;
@@ -1153,20 +1255,27 @@ function pushTestIssue(issues, test, issue) {
   });
 }
 function pushIssue(issues, issue) {
+  const metadata = metadataForRule(issue.ruleId);
   issues.push({
     ...issue,
+    remediation: metadata.remediation,
+    ...metadata.example ? { remediationExample: metadata.example } : {},
+    ...metadata.documentationUrl ? { documentationUrl: metadata.documentationUrl } : {},
     id: stableIssueId(issue)
   });
 }
 
 // src/analyze.ts
 async function analyzeProject(options = {}) {
-  const root = path4.resolve(options.root ?? ".");
+  const root = path5.resolve(options.root ?? ".");
+  const loadedConfig = await readConfig(root);
   const scan = await scanProject(root, options.ignore ?? []);
   const files = await Promise.all(scan.files.map((file2) => analyzeFile(root, file2, scan.frameworks)));
-  const issues = runRules(files);
+  const ruleResult = runRulesWithStats(files, loadedConfig.config);
+  const issues = ruleResult.issues;
   const history = await readHistory(root);
-  const warnings = [...scan.warnings, ...files.flatMap((file2) => file2.warnings), ...history.warnings];
+  const warnings = [...scan.warnings, ...files.flatMap((file2) => file2.warnings), ...history.warnings, ...loadedConfig.warnings];
+  if (ruleResult.suppressed > 0) warnings.push(`${ruleResult.suppressed} issue(s) suppressed by assertiq.config.json.`);
   const testCount = files.reduce((sum, file2) => sum + file2.testCount, 0);
   const frameworks = uniqueFrameworks([
     ...scan.frameworks,
@@ -1249,6 +1358,7 @@ function renderIssue(issue) {
     <div class="issue-head"><strong>${escapeHtml(issue.message)}</strong><span class="tag mono">${escapeHtml(issue.ruleId)}</span></div>
     <div class="loc mono">${escapeHtml(issue.file)}:${issue.line}${issue.testName ? ` - ${escapeHtml(issue.testName)}` : ""}</div>
     <div class="muted">${escapeHtml(issue.evidence)}</div>
+    ${issue.remediation ? `<div class="muted"><strong>Fix:</strong> ${escapeHtml(issue.remediation)}</div>` : ""}
   </article>`;
 }
 function renderSparkline(report) {
@@ -1350,6 +1460,11 @@ function renderMarkdownComment(report, newIssues) {
     for (const issue of newIssues.slice(0, 10)) {
       lines.push(`| ${escapeMarkdown(issue.message)} | \`${issue.file}:${issue.line}\` |`);
     }
+    lines.push("", "<details><summary>Suggested remediation</summary>", "");
+    for (const issue of newIssues.slice(0, 10)) {
+      lines.push(`- **${escapeMarkdown(issue.ruleId)}:** ${escapeMarkdown(issue.remediation ?? "Review this finding and improve the test.")}`);
+    }
+    lines.push("", "</details>");
   }
   if (report.warnings.length > 0) {
     lines.push("", "<details><summary>Warnings</summary>", "", "```text", ...report.warnings, "```", "</details>");
@@ -1386,6 +1501,7 @@ function renderTerminalReport(report) {
     for (const issue of topIssues(report.issues)) {
       lines.push(`  - ${issue.message} [${issue.ruleId}]`);
       lines.push(`    ${issue.file}:${issue.line}${issue.testName ? ` - ${issue.testName}` : ""}`);
+      if (issue.remediation) lines.push(`    Fix: ${issue.remediation}`);
     }
   }
   if (report.warnings.length > 0) {
@@ -1422,17 +1538,87 @@ function topIssues(issues) {
   const rank = { high: 0, medium: 1, low: 2 };
   return [...issues].sort((a, b) => rank[a.severity] - rank[b.severity]).slice(0, 5);
 }
+
+// src/reporters/sarif.ts
+import path6 from "path";
+function renderSarif(report) {
+  const rules = [...new Set(report.issues.map((issue) => issue.ruleId))].map((ruleId) => {
+    const metadata = metadataForRule(ruleId);
+    return {
+      id: ruleId,
+      name: metadata.title,
+      shortDescription: { text: metadata.title },
+      fullDescription: { text: metadata.remediation },
+      help: { text: metadata.remediation, markdown: `**Remediation:** ${metadata.remediation}` },
+      properties: { tags: ["assertiq", "test-quality"] }
+    };
+  });
+  const results = report.issues.map((issue) => toSarifResult(report.root, issue));
+  const payload = {
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    version: "2.1.0",
+    runs: [{
+      tool: { driver: { name: "AssertIQ", version: report.version, informationUri: "https://github.com/mov2day/assertiq", rules } },
+      results
+    }]
+  };
+  return `${JSON.stringify(payload, null, 2)}
+`;
+}
+function toSarifResult(root, issue) {
+  const metadata = metadataForRule(issue.ruleId);
+  const file2 = path6.relative(root, path6.resolve(root, issue.file)).split(path6.sep).join("/");
+  return {
+    ruleId: issue.ruleId,
+    level: sarifLevel(issue.severity),
+    message: { text: `${issue.message} Evidence: ${issue.evidence}` },
+    locations: [{ physicalLocation: {
+      artifactLocation: { uri: file2 || issue.file },
+      region: { startLine: Math.max(1, issue.line), startColumn: Math.max(1, issue.column || 1) }
+    } }],
+    fingerprints: { assertiqIssue: issueFingerprint(issue) },
+    properties: { remediation: metadata.remediation, ...metadata.documentationUrl ? { documentationUrl: metadata.documentationUrl } : {} }
+  };
+}
+function sarifLevel(severity) {
+  return severity === "high" ? "error" : severity === "medium" ? "warning" : "note";
+}
+
+// src/reporters/dashboard.ts
+function renderDashboard(report) {
+  const data = JSON.stringify({
+    summary: report.summary,
+    dimensions: report.dimensions,
+    history: report.history ?? []
+  }).replace(/</g, "\\u003c");
+  const issueCounts = report.issues.reduce((counts, issue) => {
+    counts[issue.ruleId] = (counts[issue.ruleId] ?? 0) + 1;
+    return counts;
+  }, {});
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>AssertIQ dashboard - ${escapeHtml2(report.project)}</title>
+<style>body{margin:0;background:#0a0c14;color:#e4e8f4;font:15px system-ui,sans-serif}.wrap{max-width:1100px;margin:auto;padding:32px 20px 60px}.muted{color:#8791a6}.hero{display:flex;justify-content:space-between;gap:20px;align-items:end;border-bottom:1px solid #252830;padding-bottom:24px}.score{font-size:56px;font-weight:900;color:#a78bfa}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.card,.issue{background:#13151b;border:1px solid #252830;border-radius:8px;padding:16px}.bar{height:8px;background:#252830;border-radius:8px;margin-top:10px}.fill{height:100%;background:linear-gradient(90deg,#4f8ef7,#a78bfa)}.section{margin-top:30px}.issue{margin:10px 0;border-left:4px solid #f7c948}.issue.high{border-left-color:#f76f6f}.tag{font:12px monospace;color:#a78bfa}.chart{width:100%;height:210px;background:#13151b;border:1px solid #252830;border-radius:8px}.legend{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0}.legend span{font-size:12px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}@media(max-width:700px){.hero{display:block}.grid{grid-template-columns:1fr}}</style></head><body><main class="wrap"><section class="hero"><div><div class="muted">ASSERTIQ QUALITY DASHBOARD</div><h1>${escapeHtml2(report.project)}</h1><p class="muted">${report.summary.tests} tests across ${report.summary.testFiles} files</p></div><div><div class="score">${escapeHtml2(report.summary.grade)}</div><div class="muted">${report.summary.score}/100</div></div></section>
+<section class="section"><h2>Score trend</h2><canvas id="overall" class="chart" aria-label="Overall score trend"></canvas></section><section class="section"><h2>Dimension trends</h2><div id="dimension-legend" class="legend"></div><canvas id="dimensions" class="chart" aria-label="Dimension score trends"></canvas></section><section class="grid">${report.dimensions.map((d) => `<article class="card"><div class="muted">${escapeHtml2(d.name)}</div><h2>${escapeHtml2(d.grade)} <small>${d.score}/100</small></h2><div class="bar"><div class="fill" style="width:${d.score}%"></div></div><div class="muted">${d.issueCount} risk(s)</div></article>`).join("")}</section>
+<section class="section"><h2>Latest risks</h2>${report.issues.length ? report.issues.map((issue) => `<article class="issue ${issue.severity}"><div class="row"><strong>${escapeHtml2(issue.message)}</strong><span class="tag">${escapeHtml2(issue.ruleId)}</span></div><div class="muted">${escapeHtml2(issue.file)}:${issue.line}${issue.testName ? ` - ${escapeHtml2(issue.testName)}` : ""}</div><p>${escapeHtml2(issue.remediation ?? "Review this finding and improve the test.")}</p></article>`).join("") : `<p class="muted">No risks detected.</p>`}</section>
+<section class="section"><h2>Rule-count trends</h2><div id="rule-legend" class="legend"></div><canvas id="rules" class="chart" aria-label="Historical issue-count trends by rule"></canvas><p id="rule-empty" class="muted"></p></section>${report.warnings.length ? `<section class="section"><h2>Warnings</h2><pre>${escapeHtml2(report.warnings.join("\n"))}</pre></section>` : ""}</main><script>const data=${data};const colors=['#4f8ef7','#a78bfa','#5ee8a0','#f7c948','#f76f6f','#7bc4ff'];function points(values,max){return values.map((v,i)=>[i,Math.max(0,Number(v)||0)]).map(([i,v])=>[i,v/max])}function draw(id,series,max){const c=document.getElementById(id),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.strokeStyle='#252830';ctx.beginPath();ctx.moveTo(12,h-18);ctx.lineTo(w-12,h-18);ctx.stroke();series.forEach((s,index)=>{const values=points(s.values,max);if(!values.length)return;ctx.strokeStyle=colors[index%colors.length];ctx.lineWidth=2;ctx.beginPath();values.forEach(([i,v])=>{const x=12+i*(w-24)/Math.max(1,values.length-1),y=h-18-v*(h-36);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()})}function legend(id,series){const root=document.getElementById(id);series.forEach((s,index)=>{const item=document.createElement('span'),dot=document.createElement('i');dot.className='dot';dot.style.background=colors[index%colors.length];item.append(dot,document.createTextNode(s.name));root.append(item)})}const snapshots=data.history.concat([{score:data.summary.score,dimensions:data.dimensions,ruleCounts:${JSON.stringify(issueCounts).replace(/</g, "\\u003c")}}]);draw('overall',[{name:'Overall',values:snapshots.map(s=>s.score)}],100);const dimensions=data.dimensions.map(d=>({name:d.name,values:snapshots.map(s=>{const found=(s.dimensions||[]).find(x=>x.id===d.id);return found?found.score:d.score})}));legend('dimension-legend',dimensions);draw('dimensions',dimensions,100);const totals={};snapshots.forEach(s=>Object.entries(s.ruleCounts||{}).forEach(([key,value])=>{if(typeof value==='number')totals[key]=(totals[key]||0)+value}));const rules=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]).slice(0,5).map(key=>({name:key,values:snapshots.map(s=>typeof(s.ruleCounts||{})[key]==='number'?(s.ruleCounts||{})[key]:0)}));if(rules.length){legend('rule-legend',rules);draw('rules',rules,Math.max(1,...rules.flatMap(r=>r.values)))}else document.getElementById('rule-empty').textContent='No rule-count history yet.';</script></body></html>`;
+}
+function escapeHtml2(value) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
+}
 export {
   analyzeProject,
+  applyConfig,
   buildHistoryEntry,
   computeScoreDelta,
   failsThreshold,
   gradeForScore,
   issueFingerprint,
+  readConfig,
   readHistory,
   renderBadge,
+  renderDashboard,
   renderHtmlReport,
   renderMarkdownComment,
+  renderSarif,
   renderTerminalReport,
   writeHistory
 };

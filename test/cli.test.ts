@@ -44,4 +44,10 @@ describe("cli", () => {
       execFileAsync("node", ["dist/cli.js", "--dir", root, "--fail-below", "A"])
     ).rejects.toMatchObject({ code: 1 });
   });
+
+  it("requires a baseline for local new-risk gates", async () => {
+    await expect(
+      execFileAsync("node", ["dist/cli.js", "--dir", root, "--fail-on-new", "high"])
+    ).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining("require --baseline") });
+  });
 });
