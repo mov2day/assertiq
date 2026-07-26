@@ -29,6 +29,11 @@ export function renderMarkdownComment(report: AssertIQReport, newIssues: Issue[]
     for (const issue of newIssues.slice(0, 10)) {
       lines.push(`| ${escapeMarkdown(issue.message)} | \`${issue.file}:${issue.line}\` |`);
     }
+    lines.push("", "<details><summary>Suggested remediation</summary>", "");
+    for (const issue of newIssues.slice(0, 10)) {
+      lines.push(`- **${escapeMarkdown(issue.ruleId)}:** ${escapeMarkdown(issue.remediation ?? "Review this finding and improve the test.")}`);
+    }
+    lines.push("", "</details>");
   }
 
   if (report.warnings.length > 0) {

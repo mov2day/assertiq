@@ -48,7 +48,11 @@ export function buildHistoryEntry(report: AssertIQReport, sha: string, date = ne
       id: dimension.id,
       score: dimension.score,
       grade: dimension.grade
-    }))
+    })),
+    ruleCounts: report.issues.reduce<Record<string, number>>((counts, issue) => {
+      counts[issue.ruleId] = (counts[issue.ruleId] ?? 0) + 1;
+      return counts;
+    }, {})
   };
 }
 
@@ -83,4 +87,3 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
     )
   );
 }
-

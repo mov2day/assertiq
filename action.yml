@@ -25,6 +25,26 @@ inputs:
     description: On push to main, append the latest score snapshot to assertiq-history.json.
     required: false
     default: "false"
+  fail-on-new:
+    description: Fail pull requests when new issues meet low, medium, or high severity.
+    required: false
+    default: ""
+  max-new-issues:
+    description: Maximum number of new issues allowed after severity filtering.
+    required: false
+    default: ""
+  sarif:
+    description: Write a SARIF report for Code Scanning.
+    required: false
+    default: "false"
+  sarif-output:
+    description: Path for the generated SARIF report.
+    required: false
+    default: "assertiq-results.sarif"
+  upload-sarif:
+    description: Upload the SARIF report to GitHub Code Scanning.
+    required: false
+    default: "false"
   github-token:
     description: GitHub token used to post pull request comments.
     required: false
@@ -36,6 +56,12 @@ outputs:
     description: Overall letter grade.
   json:
     description: Full AssertIQ JSON report.
+  new-issues:
+    description: Number of new issues detected on a pull request.
+  new-high-issues:
+    description: Number of new high-severity issues detected on a pull request.
+  new-risk-gate-passed:
+    description: Whether the configured new-risk gate passed.
 runs:
   using: node24
   main: dist/action.cjs

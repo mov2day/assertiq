@@ -16,6 +16,7 @@ export function renderTerminalReport(report: AssertIQReport): string {
     for (const issue of topIssues(report.issues)) {
       lines.push(`  - ${issue.message} [${issue.ruleId}]`);
       lines.push(`    ${issue.file}:${issue.line}${issue.testName ? ` - ${issue.testName}` : ""}`);
+      if (issue.remediation) lines.push(`    Fix: ${issue.remediation}`);
     }
   }
 

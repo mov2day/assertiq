@@ -1,19 +1,23 @@
 import path from "node:path";
 import { TOOL_VERSION } from "./constants.js";
 import { computeScoreDelta, readHistory } from "./history.js";
+import { readConfig } from "./config.js";
 import { analyzeFile } from "./parser.js";
-import { runRules } from "./rules.js";
+import { runRulesWithStats } from "./rules.js";
 import { scanProject } from "./scanner.js";
 import { gradeForScore, overallScore, scoreDimensions } from "./scoring.js";
 import type { AnalyzeOptions, AssertIQReport, Framework } from "./types.js";
 
 export async function analyzeProject(options: AnalyzeOptions = {}): Promise<AssertIQReport> {
   const root = path.resolve(options.root ?? ".");
+  const loadedConfig = await readConfig(root);
   const scan = await scanProject(root, options.ignore ?? []);
   const files = await Promise.all(scan.files.map((file) => analyzeFile(root, file, scan.frameworks)));
-  const issues = runRules(files);
+  const ruleResult = runRulesWithStats(files, loadedConfig.config);
+  const issues = ruleResult.issues;
   const history = await readHistory(root);
-  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings), ...history.warnings];
+  const warnings = [...scan.warnings, ...files.flatMap((file) => file.warnings), ...history.warnings, ...loadedConfig.warnings];
+  if (ruleResult.suppressed > 0) warnings.push(`${ruleResult.suppressed} issue(s) suppressed by assertiq.config.json.`);
   const testCount = files.reduce((sum, file) => sum + file.testCount, 0);
   const frameworks = uniqueFrameworks([
     ...scan.frameworks,

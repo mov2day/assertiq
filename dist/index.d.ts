@@ -64,6 +64,9 @@ interface Issue {
     column: number;
     testName?: string;
     evidence: string;
+    remediation?: string;
+    remediationExample?: string;
+    documentationUrl?: string;
 }
 interface DimensionScore {
     id: DimensionId;
@@ -92,6 +95,7 @@ interface HistoryEntry {
     score: number;
     grade: string;
     dimensions: HistoryDimensionEntry[];
+    ruleCounts?: Record<string, number>;
 }
 interface DimensionDelta {
     id: DimensionId;
@@ -120,6 +124,26 @@ interface AnalyzeOptions {
 
 declare function analyzeProject(options?: AnalyzeOptions): Promise<AssertIQReport>;
 
+type RuleMode = "off" | "warn" | "error";
+interface SuppressionConfig {
+    fingerprint: string;
+    reason?: string;
+}
+interface AssertIQConfig {
+    rules?: Record<string, RuleMode>;
+    ignoreRules?: string[];
+    suppressions?: SuppressionConfig[];
+}
+interface LoadedConfig {
+    config: AssertIQConfig;
+    warnings: string[];
+}
+declare function readConfig(root: string): Promise<LoadedConfig>;
+declare function applyConfig(issues: Issue[], config: AssertIQConfig): {
+    issues: Issue[];
+    suppressed: number;
+};
+
 declare function renderBadge(report: AssertIQReport): string;
 
 declare function readHistory(root: string): Promise<{
@@ -139,8 +163,12 @@ declare function renderMarkdownComment(report: AssertIQReport, newIssues: Issue[
 
 declare function renderTerminalReport(report: AssertIQReport): string;
 
+declare function renderSarif(report: AssertIQReport): string;
+
+declare function renderDashboard(report: AssertIQReport): string;
+
 declare function gradeForScore(score: number): string;
 declare function failsThreshold(score: number, threshold?: string): boolean;
 declare function issueFingerprint(issue: Issue): string;
 
-export { type AnalyzeOptions, type AssertIQReport, type DimensionDelta, type DimensionId, type DimensionScore, type FileAnalysis, type Framework, type HistoryEntry, type IsolationSignal, type Issue, type ReportSummary, type ScoreDelta, type Severity, type TestCaseInfo, analyzeProject, buildHistoryEntry, computeScoreDelta, failsThreshold, gradeForScore, issueFingerprint, readHistory, renderBadge, renderHtmlReport, renderMarkdownComment, renderTerminalReport, writeHistory };
+export { type AnalyzeOptions, type AssertIQConfig, type AssertIQReport, type DimensionDelta, type DimensionId, type DimensionScore, type FileAnalysis, type Framework, type HistoryEntry, type IsolationSignal, type Issue, type ReportSummary, type RuleMode, type ScoreDelta, type Severity, type SuppressionConfig, type TestCaseInfo, analyzeProject, applyConfig, buildHistoryEntry, computeScoreDelta, failsThreshold, gradeForScore, issueFingerprint, readConfig, readHistory, renderBadge, renderDashboard, renderHtmlReport, renderMarkdownComment, renderSarif, renderTerminalReport, writeHistory };

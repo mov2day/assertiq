@@ -47,6 +47,7 @@ function renderIssue(issue: Issue): string {
     <div class="issue-head"><strong>${escapeHtml(issue.message)}</strong><span class="tag mono">${escapeHtml(issue.ruleId)}</span></div>
     <div class="loc mono">${escapeHtml(issue.file)}:${issue.line}${issue.testName ? ` - ${escapeHtml(issue.testName)}` : ""}</div>
     <div class="muted">${escapeHtml(issue.evidence)}</div>
+    ${issue.remediation ? `<div class="muted"><strong>Fix:</strong> ${escapeHtml(issue.remediation)}</div>` : ""}
   </article>`;
 }
 
