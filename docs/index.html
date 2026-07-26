@@ -6,7 +6,7 @@
   <title>AssertIQ | Test Intelligence Platform</title>
   <meta
     name="description"
-    content="AssertIQ gives engineering orgs static test intelligence with report cards, JSON feeds, CI comments, and badges."
+    content="AssertIQ gives engineering orgs static test intelligence with PR quality gates, SARIF Code Scanning, configurable rules, and trend dashboards."
   />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -692,8 +692,8 @@
             <p class="tag">Enterprise test intelligence</p>
             <h1>Signal from tests before review.</h1>
             <p class="lead">
-              AssertIQ runs static analysis on test suites, produces weighted quality grades, and publishes outputs built
-              for engineers, CI pipelines, and leadership dashboards.
+              AssertIQ runs static analysis on test suites, blocks newly introduced risk, and publishes actionable
+              signals for engineers, CI pipelines, GitHub Code Scanning, and leadership dashboards.
             </p>
             <div class="hero-cta">
               <a class="btn btn-main" href="#reports">View report previews</a>
@@ -706,16 +706,17 @@
               <span class="dot dot-y"></span>
               <span class="dot dot-g"></span>
             </div>
-            <pre class="panel-code">$ npx assertiq --html --badge --json --fail-below C
+            <pre class="panel-code">$ npx @mov2day/assertiq --sarif --dashboard --json
+$ npx @mov2day/assertiq --baseline assertiq-baseline.json --fail-on-new high
 $ cat assertiq-badge.svg
-$ cat assertiq-report.html</pre>
+$ open assertiq-dashboard.html</pre>
           </aside>
         </div>
       </section>
 
       <section class="kpis" aria-label="platform metrics">
-        <article class="kpi"><small>Scoring dimensions</small><strong>5</strong></article>
-        <article class="kpi"><small>Output channels</small><strong>CLI / JSON / HTML / PR / Badge</strong></article>
+        <article class="kpi"><small>Scoring dimensions</small><strong>6</strong></article>
+        <article class="kpi"><small>Output channels</small><strong>CLI / JSON / HTML / SARIF / Dashboard</strong></article>
         <article class="kpi"><small>Framework detection</small><strong>Jest · Vitest · Playwright · Cypress · Mocha</strong></article>
         <article class="kpi"><small>Execution model</small><strong>Static only, no test runtime</strong></article>
       </section>
@@ -734,12 +735,12 @@ $ cat assertiq-report.html</pre>
           <article class="feature">
             <span class="feature-top">WGT</span>
             <h3>Weighted quality model</h3>
-            <p>Assertion quality, flakiness risk, naming clarity, coverage balance, and dead-test risk.</p>
+            <p>Six weighted dimensions cover assertions, flakiness, isolation, naming, coverage, and dead-test risk.</p>
           </article>
           <article class="feature">
             <span class="feature-top">POL</span>
-            <h3>Policy thresholds</h3>
-            <p>Gate merges with `--fail-below` from A through F, mapped to consistent CI policy.</p>
+            <h3>New-risk quality gates</h3>
+            <p>Block only introduced low, medium, or high risks with PR-aware thresholds and issue limits.</p>
           </article>
           <article class="feature">
             <span class="feature-top">PR</span>
@@ -747,14 +748,14 @@ $ cat assertiq-report.html</pre>
             <p>Sticky pull request comment highlights net-new issues between base and head commits.</p>
           </article>
           <article class="feature">
-            <span class="feature-top">JSON</span>
-            <h3>Machine-friendly output</h3>
-            <p>Structured JSON payload supports warehouse ingestion and quality trend dashboards.</p>
+            <span class="feature-top">SARIF</span>
+            <h3>Code Scanning ready</h3>
+            <p>Generate SARIF locally or upload it through the GitHub Action for inline Code Scanning alerts.</p>
           </article>
           <article class="feature">
-            <span class="feature-top">SVG</span>
-            <h3>Badge visibility</h3>
-            <p>Repository-level grade badges make test quality status visible without additional tooling.</p>
+            <span class="feature-top">CFG</span>
+            <h3>Configurable governance</h3>
+            <p>Use rule modes and fingerprint suppressions to tune policy without hiding intentional exceptions.</p>
           </article>
         </div>
       </section>
@@ -770,6 +771,8 @@ $ cat assertiq-report.html</pre>
             <span class="tab active">terminal</span>
             <span class="tab">json</span>
             <span class="tab">html</span>
+            <span class="tab">sarif</span>
+            <span class="tab">dashboard</span>
             <span class="tab">pr-comment</span>
             <span class="tab">badge</span>
           </div>
@@ -782,6 +785,7 @@ payments-api - 312 test files
 
 Assertion Quality  [########..] B+ 82
 Flakiness Risk     [#####.....] D+ 48
+Isolation Risk     [#######...] C+ 71
 Naming Clarity     [#########.] A- 88
 Coverage Balance   [#######...] C+ 71
 Dead Test Risk     [########..] B  78
@@ -801,6 +805,25 @@ OVERALL            [#######...] C+ 72</pre>
     { "ruleId": "flaky-hardcoded-wait", "line": 73 }
   ]
 }</pre>
+            </article>
+
+            <article class="panel">
+              <div class="panel-title"><span>SARIF report</span><em>--sarif</em></div>
+              <pre>{
+  "version": "2.1.0",
+  "runs": [{ "tool": { "driver": { "name": "AssertIQ" } },
+    "results": [{ "ruleId": "flaky-hardcoded-wait", "level": "error" }]
+  }]
+}</pre>
+            </article>
+
+            <article class="panel">
+              <div class="panel-title"><span>History dashboard</span><em>--dashboard</em></div>
+              <div class="comment-body">
+                <strong>Quality movement over time</strong>
+                <p>Overall score, all six dimension trends, and rule-count trends in one static report.</p>
+                <p style="margin-bottom:0">Latest risks include locations and suggested remediation.</p>
+              </div>
             </article>
 
             <article class="panel">
@@ -859,23 +882,23 @@ OVERALL            [#######...] C+ 72</pre>
           <article class="step">
             <span class="step-index">01</span>
             <h3>Baseline</h3>
-            <p>Run `npx assertiq --json` across repositories to establish current quality baseline.</p>
+            <p>Run `npx @mov2day/assertiq --json > assertiq-baseline.json` to establish the current quality baseline.</p>
           </article>
           <article class="step">
             <span class="step-index">02</span>
             <h3>Automate</h3>
-            <p>Add GitHub Action with sticky PR comments and team-visible report artifacts.</p>
+            <p>Add the GitHub Action with sticky PR comments, SARIF upload, and a generated history dashboard.</p>
           </article>
           <article class="step">
             <span class="step-index">03</span>
             <h3>Enforce</h3>
-            <p>Apply `fail-below` policy per repo maturity and monitor trend movement in dashboards.</p>
+            <p>Apply `fail-on-new` and `max-new-issues` policy, then tune exceptions through configuration.</p>
           </article>
         </div>
       </section>
 
       <footer class="footer">
-        <span>AssertIQ platform surface: CLI, Action, JSON, HTML, SVG badge</span>
+        <span>AssertIQ platform surface: CLI, Action, JSON, HTML, SARIF, dashboard, SVG badge</span>
         <span>Designed for engineering velocity with quality guardrails</span>
       </footer>
     </div>
