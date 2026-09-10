@@ -72298,7 +72298,7 @@ var import_node_path6 = __toESM(require("path"), 1);
 // package.json
 var package_default = {
   name: "@mov2day/assertiq",
-  version: "0.1.5",
+  version: "0.1.6",
   description: "Static test intelligence and report cards for JavaScript and TypeScript test suites.",
   type: "module",
   bin: {
