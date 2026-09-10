@@ -14,6 +14,7 @@ export type Framework =
   | "playwright"
   | "cypress"
   | "mocha"
+  | "pytest"
   | "unknown";
 
 export interface DimensionDefinition {
@@ -69,7 +70,10 @@ export type IsolationSignalKind =
   | "beforeall-no-afterall"
   | "spy-no-restore"
   | "global-mutation"
-  | "module-state";
+  | "module-state"
+  | "python-shared-state"
+  | "python-fixture-no-teardown"
+  | "python-mock-no-cleanup";
 
 export interface IsolationSignal {
   kind: IsolationSignalKind;

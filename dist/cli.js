@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import fs6 from "fs/promises";
-import path7 from "path";
+import fs7 from "fs/promises";
+import path8 from "path";
 import { Command, InvalidArgumentError } from "commander";
 
 // src/analyze.ts
-import path5 from "path";
+import path6 from "path";
 
 // package.json
 var package_default = {
@@ -311,7 +311,10 @@ var TEST_GLOBS = [
   "**/test/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
   "**/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
   "**/cypress/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
-  "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+  "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+  "**/test_*.py",
+  "**/*_test.py",
+  "**/{test,tests}/**/*.py"
 ];
 async function scanProject(rootInput = ".", ignore = []) {
   const root = path3.resolve(rootInput);
@@ -341,6 +344,7 @@ async function scanProject(rootInput = ".", ignore = []) {
 }
 function frameworkFromPath(file2) {
   const normalized = toPosix(file2).toLowerCase();
+  if (normalized.endsWith(".py")) return "pytest";
   if (normalized.includes("/cypress/") || normalized.startsWith("cypress/")) return "cypress";
   if (normalized.includes("playwright") || normalized.includes("/e2e/")) return "playwright";
   return "unknown";
@@ -350,6 +354,8 @@ function toPosix(file2) {
 }
 async function readProject(root, warnings) {
   const packagePath = path3.join(root, "package.json");
+  let name = path3.basename(root);
+  let frameworks = [];
   try {
     const raw = await fs3.readFile(packagePath, "utf8");
     const pkg = JSON.parse(raw);
@@ -358,16 +364,26 @@ async function readProject(root, warnings) {
       ...pkg.devDependencies,
       ...pkg.peerDependencies
     };
-    return {
-      name: pkg.name ?? path3.basename(root),
-      frameworks: detectFrameworks(deps)
-    };
+    name = pkg.name ?? name;
+    frameworks = detectFrameworks(deps);
   } catch (error) {
     if (error.code !== "ENOENT") {
       warnings.push(`Could not read package.json: ${error.message}`);
     }
-    return { name: path3.basename(root), frameworks: [] };
   }
+  if (await hasPytestConfig(root)) frameworks = [.../* @__PURE__ */ new Set([...frameworks, "pytest"])];
+  return { name, frameworks };
+}
+async function hasPytestConfig(root) {
+  for (const file2 of ["pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml"]) {
+    try {
+      const content = await fs3.readFile(path3.join(root, file2), "utf8");
+      if (file2 === "pytest.ini" || /\[tool\.pytest(?:\.ini_options)?\]|\[tool:pytest\]|\[pytest\]/.test(content)) return true;
+    } catch (error) {
+      if (error.code !== "ENOENT") return false;
+    }
+  }
+  return false;
 }
 function detectFrameworks(deps) {
   const frameworks = /* @__PURE__ */ new Set();
@@ -407,7 +423,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
   const source = await fs4.readFile(absoluteFile, "utf8");
   const pathFramework = frameworkFromPath(relativeFile);
   const framework = pathFramework === "unknown" ? detectedFrameworks[0] ?? "unknown" : pathFramework;
-  const commentedOutTests = findCommentedOutTests(source, relativeFile);
+  const commentedOutTests2 = findCommentedOutTests(source, relativeFile);
   const warnings = [];
   let ast;
   try {
@@ -433,7 +449,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
       testCount: 0,
       tests: [],
       skippedBlocks: [],
-      commentedOutTests,
+      commentedOutTests: commentedOutTests2,
       isolationSignals: [],
       warnings
     };
@@ -516,7 +532,7 @@ async function analyzeFile(root, relativeFile, detectedFrameworks) {
     testCount: tests.length,
     tests,
     skippedBlocks,
-    commentedOutTests,
+    commentedOutTests: commentedOutTests2,
     isolationSignals,
     warnings
   };
@@ -925,6 +941,135 @@ function findCommentedOutTests(source, file2) {
   return results;
 }
 
+// src/python-parser.ts
+import fs5 from "fs/promises";
+import path5 from "path";
+async function analyzePythonFile(root, relativeFile) {
+  const source = await fs5.readFile(path5.join(root, relativeFile), "utf8");
+  const lines = source.split(/\r?\n/);
+  const tests = [];
+  const skippedBlocks = [];
+  const isolationSignals = [];
+  const classStack = [];
+  const moduleMutable = /* @__PURE__ */ new Set();
+  const decorators = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const raw = lines[index] ?? "";
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const indent = indentation(raw);
+    while (classStack.length && indent <= classStack[classStack.length - 1].indent) classStack.pop();
+    if (trimmed.startsWith("@")) {
+      decorators.push({ text: trimmed, indent });
+      continue;
+    }
+    const activeDecorators = decorators.filter((decorator) => decorator.indent === indent).map((decorator) => decorator.text);
+    decorators.length = 0;
+    const classMatch = /^class\s+(Test[A-Za-z0-9_]*)\b/.exec(trimmed);
+    if (classMatch) {
+      classStack.push({ name: classMatch[1], indent, mutable: /* @__PURE__ */ new Set(), skipped: activeDecorators.some((value) => /pytest\.mark\.(skip|skipif|xfail)\b/.test(value)) });
+      continue;
+    }
+    const assignment = /^([A-Za-z_]\w*)\s*(?:\[[^\]]+\])?\s*=\s*(?![=])/.exec(trimmed);
+    if (assignment && !trimmed.startsWith("def ")) {
+      const currentClass = classStack[classStack.length - 1];
+      (currentClass?.mutable ?? moduleMutable).add(assignment[1]);
+    }
+    const functionMatch = /^(?:async\s+)?def\s+(test_[A-Za-z0-9_]*)\s*\(([^)]*)\)\s*:/.exec(trimmed);
+    if (!functionMatch) {
+      if (isFixture(activeDecorators)) {
+        const fixtureEnd = blockEnd(lines, index, indent);
+        const fixtureBody = lines.slice(index + 1, fixtureEnd).join("\n");
+        if (isStatefulFixture(fixtureBody) && !hasFixtureCleanup(fixtureBody)) {
+          isolationSignals.push({ kind: "python-fixture-no-teardown", file: relativeFile, line: index + 1, column: indent, evidence: "stateful pytest fixture without yield, finalizer, or context cleanup" });
+        }
+      }
+      continue;
+    }
+    const name = functionMatch[1];
+    const bodyEnd = blockEnd(lines, index, indent);
+    const bodyLines = lines.slice(index + 1, bodyEnd);
+    const body = bodyLines.join("\n");
+    const skipped = activeDecorators.some((value) => /pytest\.mark\.(skip|skipif|xfail)\b/.test(value)) || classStack.some((item) => item.skipped);
+    const fullName = [...classStack.map((item) => item.name), name].join(" > ");
+    const assertions = extractAssertions(bodyLines, index + 1);
+    const test = {
+      name,
+      fullName,
+      file: relativeFile,
+      line: index + 1,
+      column: indent,
+      framework: "pytest",
+      skipped,
+      only: activeDecorators.some((value) => /pytest\.mark\.(?:only|focus)\b/.test(value)),
+      todo: false,
+      assertionCount: assertions.length,
+      weakAssertionCount: assertions.filter((item) => item.weak).length,
+      structureAssertionCount: assertions.filter((item) => item.structureOnly).length,
+      snapshotAssertionCount: 0,
+      hardcodedWaitCount: count(body, /\b(?:time\.)?sleep\s*\(\s*\d+(?:\.\d+)?/g),
+      timeDependentCount: count(body, /\b(?:time\.(?:time|monotonic)|datetime\.(?:now|utcnow)|date\.today)\s*\(/g),
+      randomCount: count(body, /\b(?:random\.|secrets\.)\w+\s*\(/g),
+      externalHttpCount: count(body, /https?:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0(?::|\/|$))[^\s'\"]+/gi)
+    };
+    tests.push(test);
+    if (skipped || test.only) skippedBlocks.push({ name, file: relativeFile, line: index + 1, column: indent, kind: "test", modifier: test.only ? "only" : "skip" });
+    const shared = /* @__PURE__ */ new Set([...moduleMutable, ...classStack.flatMap((item) => [...item.mutable])]);
+    const mutated = [...shared].filter((variable) => new RegExp(`\\b${escapeRegExp(variable)}\\s*(?:[+\\-*/]?=)`).test(body));
+    if (mutated.length) isolationSignals.push({ kind: "python-shared-state", file: relativeFile, line: index + 1, column: indent, testName: fullName, evidence: `mutates module/class state: ${mutated.join(", ")}` });
+    if (/\b(?:mock\.)?(?:patch|patch\.object)\s*\(/.test(body) && !/\b(?:with\s+.*(?:patch|patch\.object)|\.stop\s*\(|\.stopall\s*\()/.test(body)) {
+      isolationSignals.push({ kind: "python-mock-no-cleanup", file: relativeFile, line: index + 1, column: indent, testName: fullName, evidence: "mock patch without context manager or stop cleanup" });
+    }
+    index = bodyEnd - 1;
+  }
+  return { file: relativeFile, framework: "pytest", testCount: tests.length, tests, skippedBlocks, commentedOutTests: commentedOutTests(lines, relativeFile), isolationSignals, warnings: [] };
+}
+function extractAssertions(lines, offset) {
+  const assertions = [];
+  lines.forEach((line, index) => {
+    const value = line.trim();
+    if (/^assert\s+/.test(value)) {
+      const weak = /^assert\s+(?:True|1|["'].*["'])\s*(?:#.*)?$/.test(value);
+      assertions.push({ matcher: "assert", line: offset + index + 1, weak, structureOnly: /\b(?:isinstance|hasattr|\.keys\s*\()/.test(value), snapshot: false });
+    }
+    if (/\bpytest\.raises\s*\(/.test(value)) assertions.push({ matcher: "pytest.raises", line: offset + index + 1, weak: false, structureOnly: false, snapshot: false });
+  });
+  return assertions;
+}
+function blockEnd(lines, start, indent) {
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (line.trim() && !line.trim().startsWith("#") && indentation(line) <= indent) return index;
+  }
+  return lines.length;
+}
+function indentation(line) {
+  return line.match(/^\s*/)?.[0].replace(/\t/g, "    ").length ?? 0;
+}
+function isFixture(decorators) {
+  return decorators.some((value) => /@pytest\.fixture\b/.test(value));
+}
+function isStatefulFixture(body) {
+  return /\b(?:mock\.)?patch\s*\(|\bmonkeypatch\.(?:setattr|setenv|setitem)\s*\(/.test(body);
+}
+function hasFixtureCleanup(body) {
+  return /\byield\b|\.addfinalizer\s*\(|\bwith\s+/.test(body);
+}
+function count(value, expression) {
+  return [...value.matchAll(expression)].length;
+}
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function commentedOutTests(lines, file2) {
+  return lines.flatMap((line, index) => /^\s*#\s*(?:async\s+)?def\s+test_\w+\s*\(/.test(line) ? [{ file: file2, line: index + 1, evidence: line.trim().slice(0, 140) }] : []);
+}
+
+// src/adapters.ts
+function analyzeFile2(root, relativeFile, detectedFrameworks) {
+  return relativeFile.toLowerCase().endsWith(".py") ? analyzePythonFile(root, relativeFile) : analyzeFile(root, relativeFile, detectedFrameworks);
+}
+
 // src/remediation.ts
 var generic = (remediation) => ({ title: "Test quality risk", remediation });
 var RULE_METADATA = {
@@ -948,7 +1093,10 @@ var RULE_METADATA = {
   "isolation-beforeall-no-afterall": { title: "Missing suite cleanup", remediation: "Add matching afterAll cleanup for resources created in beforeAll." },
   "isolation-spy-no-restore": { title: "Unrestored spy", remediation: "Restore the spy in afterEach or enable automatic mock restoration." },
   "isolation-global-mutation": { title: "Global mutation", remediation: "Restore the global value in cleanup or isolate the mutation behind a test helper." },
-  "isolation-module-state": { title: "Module state leakage", remediation: "Reset module and mock state in afterEach or before the next test." }
+  "isolation-module-state": { title: "Module state leakage", remediation: "Reset module and mock state in afterEach or before the next test." },
+  "isolation-python-shared-state": { title: "Shared Python state", remediation: "Keep state local to the test or reset module/class state with a fixture." },
+  "isolation-pytest-fixture-no-teardown": { title: "Fixture without teardown", remediation: "Use yield, a finalizer, or a context manager to undo fixture side effects." },
+  "isolation-python-mock-no-cleanup": { title: "Uncleaned mock patch", remediation: "Use mock.patch as a context manager or stop the patch in fixture cleanup." }
 };
 function metadataForRule(ruleId) {
   return RULE_METADATA[ruleId] ?? generic("Review this finding and make the test deterministic, isolated, and behavior-focused.");
@@ -1214,6 +1362,18 @@ function applyIsolationSignal(signal, issues) {
     });
     return;
   }
+  if (signal.kind === "python-shared-state") {
+    pushIssue(issues, { ruleId: "isolation-python-shared-state", dimension: "isolation-risk", severity: "medium", message: "Python test mutates module or class state shared with other tests.", file: signal.file, line: signal.line, column: signal.column, ...signal.testName ? { testName: signal.testName } : {}, evidence: signal.evidence });
+    return;
+  }
+  if (signal.kind === "python-fixture-no-teardown") {
+    pushIssue(issues, { ruleId: "isolation-pytest-fixture-no-teardown", dimension: "isolation-risk", severity: "high", message: "Stateful pytest fixture has no recognizable teardown.", file: signal.file, line: signal.line, column: signal.column, evidence: signal.evidence });
+    return;
+  }
+  if (signal.kind === "python-mock-no-cleanup") {
+    pushIssue(issues, { ruleId: "isolation-python-mock-no-cleanup", dimension: "isolation-risk", severity: "high", message: "Mock patch is used without recognizable cleanup.", file: signal.file, line: signal.line, column: signal.column, ...signal.testName ? { testName: signal.testName } : {}, evidence: signal.evidence });
+    return;
+  }
   const testMeta = signal.testName ? { testName: signal.testName } : {};
   pushIssue(issues, {
     ruleId: "isolation-module-state",
@@ -1250,10 +1410,10 @@ function pushIssue(issues, issue) {
 
 // src/analyze.ts
 async function analyzeProject(options2 = {}) {
-  const root = path5.resolve(options2.root ?? ".");
+  const root = path6.resolve(options2.root ?? ".");
   const loadedConfig = await readConfig(root);
   const scan = await scanProject(root, options2.ignore ?? []);
-  const files = await Promise.all(scan.files.map((file2) => analyzeFile(root, file2, scan.frameworks)));
+  const files = await Promise.all(scan.files.map((file2) => analyzeFile2(root, file2, scan.frameworks)));
   const ruleResult = runRulesWithStats(files, loadedConfig.config);
   const issues = ruleResult.issues;
   const history = await readHistory(root);
@@ -1474,7 +1634,7 @@ function topIssues(issues) {
 }
 
 // src/reporters/sarif.ts
-import path6 from "path";
+import path7 from "path";
 function renderSarif(report) {
   const rules = [...new Set(report.issues.map((issue) => issue.ruleId))].map((ruleId) => {
     const metadata = metadataForRule(ruleId);
@@ -1501,7 +1661,7 @@ function renderSarif(report) {
 }
 function toSarifResult(root, issue) {
   const metadata = metadataForRule(issue.ruleId);
-  const file2 = path6.relative(root, path6.resolve(root, issue.file)).split(path6.sep).join("/");
+  const file2 = path7.relative(root, path7.resolve(root, issue.file)).split(path7.sep).join("/");
   return {
     ruleId: issue.ruleId,
     level: sarifLevel(issue.severity),
@@ -1564,27 +1724,27 @@ function parseNonNegativeInteger(value) {
 }
 
 // src/action-utils.ts
-import fs5 from "fs";
+import fs6 from "fs";
 function diffIssues(baseReport, headReport) {
   const base = new Set(baseReport.issues.map(issueFingerprint));
   return headReport.issues.filter((issue) => !base.has(issueFingerprint(issue)));
 }
 
 // src/cli.ts
-var program2 = new Command().name("assertiq").description("Static test intelligence and report cards for JavaScript and TypeScript test suites.").option("--dir <path>", "path to scan", ".").option("--ignore <glob>", "glob pattern to exclude; repeatable", collect, []).option("--html", "write assertiq-report.html").option("--badge", "write assertiq-badge.svg").option("--json", "print JSON report").option("--fail-below <grade>", "exit 1 if overall grade is below A, B, C, D, or F", parseThreshold).option("--fail-on-new <severity>", "fail on issues at or above low, medium, or high", parseSeverity).option("--max-new-issues <count>", "fail when issues exceed count", parseNonNegativeInteger).option("--sarif", "write assertiq-results.sarif").option("--sarif-output <path>", "SARIF output path", "assertiq-results.sarif").option("--dashboard", "write assertiq-dashboard.html").option("--dashboard-output <path>", "dashboard output path", "assertiq-dashboard.html").option("--baseline <path>", "previous AssertIQ JSON report used by new-risk gates").version("0.2.0");
+var program2 = new Command().name("assertiq").description("Static test intelligence and report cards for JavaScript, TypeScript, and pytest test suites.").option("--dir <path>", "path to scan", ".").option("--ignore <glob>", "glob pattern to exclude; repeatable", collect, []).option("--html", "write assertiq-report.html").option("--badge", "write assertiq-badge.svg").option("--json", "print JSON report").option("--fail-below <grade>", "exit 1 if overall grade is below A, B, C, D, or F", parseThreshold).option("--fail-on-new <severity>", "fail on issues at or above low, medium, or high", parseSeverity).option("--max-new-issues <count>", "fail when issues exceed count", parseNonNegativeInteger).option("--sarif", "write assertiq-results.sarif").option("--sarif-output <path>", "SARIF output path", "assertiq-results.sarif").option("--dashboard", "write assertiq-dashboard.html").option("--dashboard-output <path>", "dashboard output path", "assertiq-dashboard.html").option("--baseline <path>", "previous AssertIQ JSON report used by new-risk gates").version("0.2.0");
 program2.parse(process.argv);
 var options = program2.opts();
 try {
-  const root = path7.resolve(options.dir);
+  const root = path8.resolve(options.dir);
   const report = await analyzeProject({ root, ignore: options.ignore ?? [] });
   if (options.html) {
-    await fs6.writeFile(path7.join(root, "assertiq-report.html"), renderHtmlReport(report), "utf8");
+    await fs7.writeFile(path8.join(root, "assertiq-report.html"), renderHtmlReport(report), "utf8");
   }
   if (options.badge) {
-    await fs6.writeFile(path7.join(root, "assertiq-badge.svg"), renderBadge(report), "utf8");
+    await fs7.writeFile(path8.join(root, "assertiq-badge.svg"), renderBadge(report), "utf8");
   }
-  if (options.sarif) await fs6.writeFile(path7.resolve(root, options.sarifOutput ?? "assertiq-results.sarif"), renderSarif(report), "utf8");
-  if (options.dashboard) await fs6.writeFile(path7.resolve(root, options.dashboardOutput ?? "assertiq-dashboard.html"), renderDashboard(report), "utf8");
+  if (options.sarif) await fs7.writeFile(path8.resolve(root, options.sarifOutput ?? "assertiq-results.sarif"), renderSarif(report), "utf8");
+  if (options.dashboard) await fs7.writeFile(path8.resolve(root, options.dashboardOutput ?? "assertiq-dashboard.html"), renderDashboard(report), "utf8");
   if (options.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}
 `);
@@ -1596,7 +1756,7 @@ try {
   }
   if (options.failOnNew || options.maxNewIssues !== void 0) {
     if (!options.baseline) throw new Error("--fail-on-new and --max-new-issues require --baseline <AssertIQ JSON report>.");
-    const baseline = await readBaseline(path7.resolve(root, options.baseline));
+    const baseline = await readBaseline(path8.resolve(root, options.baseline));
     if (failsNewRiskGate(diffIssues(baseline, report), options.failOnNew, options.maxNewIssues)) process.exitCode = 1;
   }
 } catch (error) {
@@ -1615,7 +1775,7 @@ function parseThreshold(value) {
   return normalized;
 }
 async function readBaseline(filePath) {
-  const parsed = JSON.parse(await fs6.readFile(filePath, "utf8"));
+  const parsed = JSON.parse(await fs7.readFile(filePath, "utf8"));
   if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.issues)) {
     throw new Error(`Baseline ${filePath} is not an AssertIQ JSON report.`);
   }

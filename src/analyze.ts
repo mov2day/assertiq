@@ -2,7 +2,7 @@ import path from "node:path";
 import { TOOL_VERSION } from "./constants.js";
 import { computeScoreDelta, readHistory } from "./history.js";
 import { readConfig } from "./config.js";
-import { analyzeFile } from "./parser.js";
+import { analyzeFile } from "./adapters.js";
 import { runRulesWithStats } from "./rules.js";
 import { scanProject } from "./scanner.js";
 import { gradeForScore, overallScore, scoreDimensions } from "./scoring.js";

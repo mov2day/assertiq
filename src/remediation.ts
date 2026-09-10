@@ -28,7 +28,10 @@ export const RULE_METADATA: Record<string, RuleMetadata> = {
   "isolation-beforeall-no-afterall": { title: "Missing suite cleanup", remediation: "Add matching afterAll cleanup for resources created in beforeAll." },
   "isolation-spy-no-restore": { title: "Unrestored spy", remediation: "Restore the spy in afterEach or enable automatic mock restoration." },
   "isolation-global-mutation": { title: "Global mutation", remediation: "Restore the global value in cleanup or isolate the mutation behind a test helper." },
-  "isolation-module-state": { title: "Module state leakage", remediation: "Reset module and mock state in afterEach or before the next test." }
+  "isolation-module-state": { title: "Module state leakage", remediation: "Reset module and mock state in afterEach or before the next test." },
+  "isolation-python-shared-state": { title: "Shared Python state", remediation: "Keep state local to the test or reset module/class state with a fixture." },
+  "isolation-pytest-fixture-no-teardown": { title: "Fixture without teardown", remediation: "Use yield, a finalizer, or a context manager to undo fixture side effects." },
+  "isolation-python-mock-no-cleanup": { title: "Uncleaned mock patch", remediation: "Use mock.patch as a context manager or stop the patch in fixture cleanup." }
 };
 
 export function metadataForRule(ruleId: string): RuleMetadata {

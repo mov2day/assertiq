@@ -10,7 +10,10 @@ const TEST_GLOBS = [
   "**/test/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
   "**/tests/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
   "**/cypress/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
-  "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+  "**/e2e/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+  "**/test_*.py",
+  "**/*_test.py",
+  "**/{test,tests}/**/*.py"
 ];
 
 export interface ScanResult {
@@ -52,6 +55,7 @@ export async function scanProject(rootInput = ".", ignore: string[] = []): Promi
 
 export function frameworkFromPath(file: string): Framework {
   const normalized = toPosix(file).toLowerCase();
+  if (normalized.endsWith(".py")) return "pytest";
   if (normalized.includes("/cypress/") || normalized.startsWith("cypress/")) return "cypress";
   if (normalized.includes("playwright") || normalized.includes("/e2e/")) return "playwright";
   return "unknown";
@@ -63,6 +67,8 @@ export function toPosix(file: string): string {
 
 async function readProject(root: string, warnings: string[]): Promise<{ name: string; frameworks: Framework[] }> {
   const packagePath = path.join(root, "package.json");
+  let name = path.basename(root);
+  let frameworks: Framework[] = [];
   try {
     const raw = await fs.readFile(packagePath, "utf8");
     const pkg = JSON.parse(raw) as {
@@ -76,16 +82,27 @@ async function readProject(root: string, warnings: string[]): Promise<{ name: st
       ...pkg.devDependencies,
       ...pkg.peerDependencies
     };
-    return {
-      name: pkg.name ?? path.basename(root),
-      frameworks: detectFrameworks(deps)
-    };
+    name = pkg.name ?? name;
+    frameworks = detectFrameworks(deps);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       warnings.push(`Could not read package.json: ${(error as Error).message}`);
     }
-    return { name: path.basename(root), frameworks: [] };
   }
+  if (await hasPytestConfig(root)) frameworks = [...new Set([...frameworks, "pytest" as Framework])];
+  return { name, frameworks };
+}
+
+async function hasPytestConfig(root: string): Promise<boolean> {
+  for (const file of ["pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml"]) {
+    try {
+      const content = await fs.readFile(path.join(root, file), "utf8");
+      if (file === "pytest.ini" || /\[tool\.pytest(?:\.ini_options)?\]|\[tool:pytest\]|\[pytest\]/.test(content)) return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") return false;
+    }
+  }
+  return false;
 }
 
 function detectFrameworks(deps: Record<string, string | undefined>): Framework[] {

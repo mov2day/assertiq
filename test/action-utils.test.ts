@@ -6,6 +6,7 @@ import {
   diffIssues,
   escapeActionCommand,
   setActionOutput,
+  selectNewHighAnnotations,
   shouldWriteHistoryForAction,
   splitActionInput
 } from "../src/action-utils.js";
@@ -55,6 +56,12 @@ describe("action utilities", () => {
     expect(shouldWriteHistoryForAction(true, "pull_request", "refs/heads/main")).toBe(false);
     expect(shouldWriteHistoryForAction(true, "push", "refs/heads/feature")).toBe(false);
     expect(shouldWriteHistoryForAction(true, "push", "refs/heads/main")).toBe(true);
+  });
+
+  it("selects only unique high-severity annotations and applies the cap", () => {
+    const high = { ...newIssue, severity: "high" as const };
+    const low = { ...newIssue, id: "low", severity: "low" as const };
+    expect(selectNewHighAnnotations([high, high, low], 1)).toEqual([high]);
   });
 });
 

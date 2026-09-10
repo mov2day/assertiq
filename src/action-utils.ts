@@ -31,6 +31,22 @@ export function actionWarning(message: string): void {
   process.stdout.write(`::warning::${escapeActionCommand(message)}\n`);
 }
 
+export function actionErrorAnnotation(file: string, line: number, column: number, message: string): void {
+  const properties = `file=${escapeActionProperty(file)},line=${Math.max(1, line)},col=${Math.max(1, column || 1)}`;
+  process.stderr.write(`::error ${properties}::${escapeActionCommand(message)}\n`);
+}
+
+export function selectNewHighAnnotations(issues: Issue[], limit = 50): Issue[] {
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    if (issue.severity !== "high") return false;
+    const fingerprint = issueFingerprint(issue);
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  }).slice(0, limit);
+}
+
 export function setActionFailed(message: string): void {
   process.stderr.write(`::error::${escapeActionCommand(message)}\n`);
   process.exitCode = 1;
@@ -39,6 +55,8 @@ export function setActionFailed(message: string): void {
 export function escapeActionCommand(value: string): string {
   return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 }
+
+function escapeActionProperty(value: string): string { return value.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/:/g, "%3A").replace(/,/g, "%2C"); }
 
 export function shouldWriteHistoryForAction(trackHistory: boolean, eventName: string, ref: string): boolean {
   if (!trackHistory) return false;

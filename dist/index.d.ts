@@ -1,6 +1,6 @@
 type DimensionId = "assertion-quality" | "flakiness-risk" | "isolation-risk" | "naming-clarity" | "coverage-balance" | "dead-test-risk";
 type Severity = "low" | "medium" | "high";
-type Framework = "jest" | "vitest" | "playwright" | "cypress" | "mocha" | "unknown";
+type Framework = "jest" | "vitest" | "playwright" | "cypress" | "mocha" | "pytest" | "unknown";
 interface TestCaseInfo {
     name: string;
     fullName: string;
@@ -28,7 +28,7 @@ interface SkippedBlockInfo {
     kind: "suite" | "test";
     modifier: "skip" | "todo" | "only";
 }
-type IsolationSignalKind = "mutable-describe-var" | "beforeall-no-afterall" | "spy-no-restore" | "global-mutation" | "module-state";
+type IsolationSignalKind = "mutable-describe-var" | "beforeall-no-afterall" | "spy-no-restore" | "global-mutation" | "module-state" | "python-shared-state" | "python-fixture-no-teardown" | "python-mock-no-cleanup";
 interface IsolationSignal {
     kind: IsolationSignalKind;
     file: string;

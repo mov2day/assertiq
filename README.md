@@ -1,6 +1,6 @@
 # AssertIQ
 
-Static test intelligence and report cards for JavaScript and TypeScript test suites.
+Static test intelligence and report cards for JavaScript, TypeScript, and pytest test suites.
 
 ```sh
 npx @mov2day/assertiq
@@ -9,6 +9,8 @@ npx @mov2day/assertiq --badge
 ```
 
 AssertIQ parses test files only. It does not execute tests or need project-specific config.
+
+Pytest support includes `test_*.py` and `*_test.py` files, pytest test classes, marks, fixtures, and parameterized tests. Python is parsed statically inside AssertIQ; no Python installation is required.
 
 ## CLI
 
@@ -58,6 +60,7 @@ jobs:
           fail-below: C
           fail-on-new: high
           max-new-issues: 0
+          annotate-new-high: true # optional: inline check annotations for new high risks
           sarif: true
           upload-sarif: true
           post-comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
@@ -80,6 +83,7 @@ jobs:
 
 `post-comment` needs `issues: write`. On `pull_request` runs from forks (and Dependabot PRs), `GITHUB_TOKEN` is usually read-only, so comment posting may be skipped. Keep `post-comment` conditional as above, or use a hardened `pull_request_target` comment-only workflow.
 `track-history` writes `assertiq-history.json` only on `push` to `main` when enabled.
+`annotate-new-high` defaults to `false` and emits at most 50 GitHub check annotations for new high-severity risks on pull requests. It does not require additional token permissions.
 
 ## Configuration and suppressions
 
