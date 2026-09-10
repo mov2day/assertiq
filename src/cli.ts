@@ -31,7 +31,7 @@ interface CliOptions {
 
 const program = new Command()
   .name("assertiq")
-  .description("Static test intelligence and report cards for JavaScript and TypeScript test suites.")
+  .description("Static test intelligence and report cards for JavaScript, TypeScript, and pytest test suites.")
   .option("--dir <path>", "path to scan", ".")
   .option("--ignore <glob>", "glob pattern to exclude; repeatable", collect, [])
   .option("--html", "write assertiq-report.html")

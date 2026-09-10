@@ -140,6 +140,54 @@ describe("stateful suite", () => {
     );
   });
 
+  it("analyzes pytest tests alongside JavaScript without a Python runtime", async () => {
+    await fs.writeFile(
+      path.join(root, "test_service.py"),
+      `
+import pytest
+import random
+import time
+from unittest import mock
+
+shared = 0
+
+@pytest.fixture
+def patched_service():
+    return mock.patch("service.client")
+
+class TestService:
+    @pytest.mark.parametrize("value", [1, 2])
+    def test_returns_value(self, value):
+        assert isinstance(value, int)
+
+    @pytest.mark.skip(reason="pending")
+    def test_later(self):
+        assert True
+
+    def test_uses_shared_state(self):
+        global shared
+        shared += 1
+        time.sleep(1)
+        random.random()
+        assert False
+
+# def test_old(): pass
+`,
+      "utf8"
+    );
+    await fs.writeFile(path.join(root, "example.test.ts"), `it("returns value", () => { expect(1).toBe(1); })`, "utf8");
+
+    const report = await analyzeProject({ root });
+
+    expect(report.summary.frameworks).toEqual(expect.arrayContaining(["pytest", "vitest"]));
+    expect(report.summary.tests).toBe(4);
+    expect(report.issues.map((issue) => issue.ruleId)).toEqual(expect.arrayContaining([
+      "assertion-structure-only", "dead-skipped-test", "flaky-hardcoded-wait",
+      "flaky-random-dependent", "isolation-python-shared-state",
+      "isolation-pytest-fixture-no-teardown", "dead-commented-test"
+    ]));
+  });
+
   it("renders escaped standalone reports", async () => {
     await fs.writeFile(
       path.join(root, "x.test.ts"),

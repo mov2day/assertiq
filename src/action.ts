@@ -9,10 +9,12 @@ import { safeUpsertStickyComment } from "./action-comments.js";
 import { resolveActionPaths, resolveBaseScanRoot } from "./action-paths.js";
 import {
   actionWarning,
+  actionErrorAnnotation,
   diffIssues,
   getActionInput,
   setActionFailed,
   setActionOutput,
+  selectNewHighAnnotations,
   shouldWriteHistoryForAction,
   splitActionInput
 } from "./action-utils.js";
@@ -34,6 +36,7 @@ async function run(): Promise<void> {
   const maxNewInput = getActionInput("max-new-issues");
   const maxNewIssues = maxNewInput ? parseNonNegativeInteger(maxNewInput) : undefined;
   const uploadSarif = (getActionInput("upload-sarif") || "false").toLowerCase() === "true";
+  const annotateNewHigh = (getActionInput("annotate-new-high") || "false").toLowerCase() === "true";
   const writeSarif = uploadSarif || (getActionInput("sarif") || "false").toLowerCase() === "true";
   const token = getActionInput("github-token") || process.env.GITHUB_TOKEN || "";
   const paths = resolveActionPaths(dirInput);
@@ -71,6 +74,12 @@ async function run(): Promise<void> {
   const gateIssues = isPullRequest && baseComparisonAvailable ? newIssues : [];
   const relevantNewIssues = filterNewIssues(gateIssues, failOnNew);
   const newRiskFailed = failsNewRiskGate(gateIssues, failOnNew, maxNewIssues);
+  if (annotateNewHigh && baseComparisonAvailable) {
+    const eligible = selectNewHighAnnotations(gateIssues, Number.MAX_SAFE_INTEGER);
+    const annotations = eligible.slice(0, 50);
+    for (const issue of annotations) actionErrorAnnotation(issue.file, issue.line, issue.column, `AssertIQ ${issue.ruleId}: ${issue.message}`);
+    if (eligible.length > annotations.length) actionWarning(`AssertIQ limited high-severity check annotations to ${annotations.length}; ${eligible.length - annotations.length} additional finding(s) are in the summary report.`);
+  }
   setActionOutput("new-issues", String(gateIssues.length));
   setActionOutput("new-high-issues", String(gateIssues.filter((issue) => issue.severity === "high").length));
   setActionOutput("new-risk-gate-passed", String(!newRiskFailed));

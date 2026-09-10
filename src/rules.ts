@@ -279,6 +279,18 @@ function applyIsolationSignal(signal: IsolationSignal, issues: Issue[]) {
     });
     return;
   }
+  if (signal.kind === "python-shared-state") {
+    pushIssue(issues, { ruleId: "isolation-python-shared-state", dimension: "isolation-risk", severity: "medium", message: "Python test mutates module or class state shared with other tests.", file: signal.file, line: signal.line, column: signal.column, ...(signal.testName ? { testName: signal.testName } : {}), evidence: signal.evidence });
+    return;
+  }
+  if (signal.kind === "python-fixture-no-teardown") {
+    pushIssue(issues, { ruleId: "isolation-pytest-fixture-no-teardown", dimension: "isolation-risk", severity: "high", message: "Stateful pytest fixture has no recognizable teardown.", file: signal.file, line: signal.line, column: signal.column, evidence: signal.evidence });
+    return;
+  }
+  if (signal.kind === "python-mock-no-cleanup") {
+    pushIssue(issues, { ruleId: "isolation-python-mock-no-cleanup", dimension: "isolation-risk", severity: "high", message: "Mock patch is used without recognizable cleanup.", file: signal.file, line: signal.line, column: signal.column, ...(signal.testName ? { testName: signal.testName } : {}), evidence: signal.evidence });
+    return;
+  }
   const testMeta = signal.testName ? { testName: signal.testName } : {};
   pushIssue(issues, {
     ruleId: "isolation-module-state",

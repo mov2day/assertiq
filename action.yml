@@ -1,5 +1,5 @@
 name: AssertIQ by Mov2Day
-description: Static test intelligence and report cards for JavaScript and TypeScript test suites.
+description: Static test intelligence and report cards for JavaScript, TypeScript, and pytest test suites.
 author: Muthu Kumar Koodalingam
 branding:
   icon: award
@@ -33,6 +33,10 @@ inputs:
     description: Maximum number of new issues allowed after severity filtering.
     required: false
     default: ""
+  annotate-new-high:
+    description: Emit check annotations for newly introduced high-severity risks on pull requests.
+    required: false
+    default: "false"
   sarif:
     description: Write a SARIF report for Code Scanning.
     required: false
